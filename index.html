@@ -182,6 +182,34 @@
   .io-btn{ flex:1; padding:10px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,0.04); color:var(--cream); font-size:12px; font-weight:600; cursor:pointer; text-align:center; }
   .persist-note{ font-size:11px; color:var(--cream-dim); line-height:1.6; margin-top:6px; }
 
+  /* spot browser */
+  .spot-form{ display:flex; flex-direction:column; gap:12px; }
+  .spot-row{ display:flex; gap:8px; }
+  .spot-field{ flex:1; min-width:0; }
+  .spot-field .form-label{ margin-bottom:5px; }
+  .line-tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:4px; }
+  .line-tab{ flex:1; min-width:70px; text-align:center; padding:9px 4px; border-radius:10px;
+    font-size:11.5px; font-weight:700; border:1px solid var(--line);
+    background:rgba(255,255,255,0.03); color:var(--cream-dim); cursor:pointer; }
+  .line-tab.active{ background:var(--gold); border-color:var(--gold); color:#241a07; }
+  .spot-title{ font-size:12.5px; line-height:1.6; color:var(--cream); margin:14px 0 10px;
+    padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid var(--line); }
+  .freq-bar{ display:flex; height:26px; border-radius:8px; overflow:hidden; margin-bottom:8px; border:1px solid var(--line); }
+  .freq-seg{ display:flex; align-items:center; justify-content:center; font-size:10.5px; font-weight:700;
+    font-family:'JetBrains Mono',monospace; min-width:0; }
+  .freq-seg.raise{ background:var(--gold); color:#241a07; }
+  .freq-seg.call{ background:var(--teal); color:#0b2a24; }
+  .freq-seg.fold{ background:#2a2622; color:var(--cream-dim); }
+  .cell.act-raise{ background:var(--gold); color:#241a07; }
+  .cell.act-call{ background:var(--teal); color:#0b2a24; }
+  .cell.act-fold{ background:rgba(255,255,255,0.05); color:var(--cream-dim); }
+  .cell.sel{ outline:2px solid #fff; outline-offset:-2px; }
+  .math-box{ margin-top:12px; padding:11px 13px; border-radius:10px; background:rgba(255,255,255,0.04);
+    border:1px solid var(--line); font-size:11.5px; line-height:1.75; font-family:'JetBrains Mono',monospace; color:var(--cream-dim); }
+  .math-box b{ color:var(--cream); }
+  .hand-detail{ margin-top:10px; padding:11px 13px; border-radius:10px; font-size:12px; line-height:1.65;
+    background:rgba(201,162,75,0.12); border:1px solid rgba(201,162,75,0.4); display:none; }
+  .hand-detail.show{ display:block; }
   footer{ text-align:center; font-size:10px; color:var(--cream-dim); margin-top:8px; opacity:0.6; position:relative; z-index:1; }
 </style>
 </head>
@@ -201,6 +229,7 @@
   <div class="tabs">
     <div class="tab active" data-tab="quiz">プリフロップ</div>
     <div class="tab" data-tab="postflop">ポストフロップ</div>
+    <div class="tab" data-tab="spot">スポット</div>
     <div class="tab" data-tab="review">振り返り</div>
     <div class="tab" data-tab="myhands">マイハンド</div>
     <div class="tab" data-tab="chart">レンジ表</div>
@@ -237,6 +266,44 @@
       <div class="feedback" id="pfFeedback"><div class="fb-title" id="pfFbTitle"></div><div id="pfFbBody"></div></div>
       <button class="next-btn primary" id="pfNextStreet">次のストリートへ →</button>
       <button class="next-btn" id="pfNextHand">新しいハンドへ →</button>
+    </div>
+  </div>
+
+
+  <!-- SPOT VIEW -->
+  <div id="spotView" style="display:none;">
+    <div class="card-panel">
+      <div class="panel-title">スポット検索</div>
+      <div class="panel-sub">状況を組み立てて、そのスポットのレンジ表を確認します。マスをタップすると、そのハンドの詳細が出ます。</div>
+
+      <div class="line-tabs" id="lineTabs"></div>
+
+      <div class="spot-form">
+        <div class="spot-row">
+          <div class="spot-field"><div class="form-label">スタック</div><select class="form-select" id="spBB"></select></div>
+          <div class="spot-field"><div class="form-label">人数</div><select class="form-select" id="spTable"></select></div>
+        </div>
+        <div class="spot-row">
+          <div class="spot-field"><div class="form-label">形式</div><select class="form-select" id="spGame"><option value="cash">キャッシュ</option><option value="mtt">MTT</option></select></div>
+          <div class="spot-field" id="spStageField"><div class="form-label">ステージ</div><select class="form-select" id="spStage"><option value="early">序盤</option><option value="bubble">バブル期</option><option value="final">最終テーブル</option></select></div>
+        </div>
+        <div class="spot-row" id="spPosRow">
+          <div class="spot-field"><div class="form-label" id="spHeroLabel">自分</div><select class="form-select" id="spHero"></select></div>
+          <div class="spot-field" id="spVillainField"><div class="form-label" id="spVillainLabel">相手</div><select class="form-select" id="spVillain"></select></div>
+        </div>
+        <div class="spot-row" id="spSizeRow">
+          <div class="spot-field"><div class="form-label">オープン</div><select class="form-select" id="spOpen"></select></div>
+          <div class="spot-field" id="sp3betField"><div class="form-label">3ベット</div><select class="form-select" id="sp3bet"></select></div>
+          <div class="spot-field" id="sp4betField"><div class="form-label">4ベット</div><select class="form-select" id="sp4bet"></select></div>
+        </div>
+      </div>
+
+      <div class="spot-title" id="spotTitle"></div>
+      <div class="freq-bar" id="spotFreq"></div>
+      <div class="grid13" id="spotGrid"></div>
+      <div class="legend" id="spotLegend"></div>
+      <div class="hand-detail" id="spotHandDetail"></div>
+      <div class="math-box" id="spotMath"></div>
     </div>
   </div>
 
@@ -767,11 +834,12 @@ document.querySelectorAll('.tab').forEach(tab=>{
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
     tab.classList.add('active');
     const which = tab.dataset.tab;
-    ['quiz','postflop','review','myhands','chart','settings'].forEach(v=>{
+    ['quiz','postflop','spot','review','myhands','chart','settings'].forEach(v=>{
       document.getElementById(v+'View').style.display = (v===which) ? '' : 'none';
     });
     if(which==='chart') renderGrid();
     if(which==='review') renderReviewTab();
+    if(which==='spot') renderSpot();
   });
 });
 
@@ -1328,6 +1396,401 @@ document.getElementById('mhImportFile').addEventListener('change', (e)=>{
   e.target.value = '';
 });
 
+/* ================= Spot browser (GTO Wizard風) ================= */
+const Spot = (function(){
+  const SB = 0.5, BB = 1;
+
+  function bitsFromPct(pct){
+    const a = new Uint8Array(169);
+    ALL_CELLS.forEach(c => { if(c.percentile <= pct) a[GTO.idx[c.notation]] = 1; });
+    return a;
+  }
+  function bitsAll(){ const a = new Uint8Array(169); a.fill(1); return a; }
+  function bitsFromSet(set){
+    const a = new Uint8Array(169);
+    set.forEach(n => a[GTO.idx[n]] = 1);
+    return a;
+  }
+  function comboOf(notation){ return GTO.combos[GTO.idx[notation]]; }
+
+  /* オープンレンジ(既存モデル/Nash) */
+  function openBits(pos, s){
+    const sp = openSpec(pos, s);
+    return sp.bits ? sp.bits : bitsFromPct(sp.pct);
+  }
+  /* 3ベットレンジ */
+  function threeBetBits(hero, opener, s){
+    const th = threeBetThresholds(hero, opener, s);
+    if(th.mode === 'pushfold') return th.bits ? th.bits : bitsFromPct(th.shove);
+    return bitsFromPct(th.threeBet);
+  }
+  function threeBetCallBits(hero, opener, s){
+    const th = threeBetThresholds(hero, opener, s);
+    if(th.mode === 'pushfold') return new Uint8Array(169);
+    const a = new Uint8Array(169);
+    ALL_CELLS.forEach(c => {
+      if(c.percentile > th.threeBet && c.percentile <= th.call) a[GTO.idx[c.notation]] = 1;
+    });
+    return a;
+  }
+
+  /* ブラフ適性: スート・ブロッカー・接続性 */
+  function bluffScore(cell){
+    let s = 0;
+    if(cell.suited) s += 3;
+    if(cell.hi === 14) s += 2.5;      // Aブロッカー
+    else if(cell.hi === 13) s += 1.5; // Kブロッカー
+    const gap = cell.hi - cell.lo - 1;
+    if(!cell.pair && gap <= 1) s += 1.5;
+    if(cell.lo >= 10) s += 0.8;
+    return s;
+  }
+
+  function isIP(heroPos, villPos, tableSize){
+    const order = POSITION_SETS[tableSize].order;
+    return order.indexOf(heroPos) > order.indexOf(villPos);
+  }
+
+  /*
+    汎用スポット解決
+    heroBits   : ヒーローが到達しうるレンジ
+    villBits   : 相手のレンジ
+    callAmt    : ヒーローが追加で出す額
+    potBefore  : ヒーローのコール前のポット
+    raiseAmt   : ヒーローがレイズする場合に追加で出す額
+    ip         : ヒーローがポジションを持つか
+  */
+  function solve(o){
+    const { heroBits, villBits, callAmt, potBefore, raiseAmt, ip, aggressiveLabel } = o;
+
+    const reqEq  = callAmt / (potBefore + callAmt);          // コールに必要な生エクイティ
+    const raiseR = raiseAmt / (potBefore + raiseAmt);        // レイズのブラフ比率(risk/reward)
+    // MDF = ポット /(ポット + ベット額)。ベット額は相手が上乗せした分
+    const potPre = potBefore - callAmt;
+    const mdf = potPre > 0 ? potPre / (potPre + callAmt) : 0;
+
+    // エクイティ実現率。3ベット以降のOOPは実現が大きく落ちる
+    const realize = ip ? 1.02 : 0.80;
+
+    const hands = [];
+    for(let i = 0; i < ALL_CELLS.length; i++){
+      const c = ALL_CELLS[i];
+      const gi = GTO.idx[c.notation];
+      if(!heroBits[gi]) continue;
+      const raw = GTO.eqVsRange(c.notation, villBits);
+      if(raw === null) continue;
+      hands.push({ cell: c, notation: c.notation, gi, eq: raw, eqR: raw * realize, combos: GTO.combos[gi] });
+    }
+    if(hands.length === 0) return null;
+
+    hands.sort((a, b) => b.eqR - a.eqR);
+    const totalCombos = hands.reduce((s, h) => s + h.combos, 0);
+
+    // --- バリューレイズ: 相手の続行レンジに対しても優位なハンド ---
+    // レイズは実現率ペナルティを課さない(オールイン方向で実現率100%に近い)
+    const valueCut = Math.max(0.62, reqEq + 0.28);
+    const action = {};
+    let valueCombos = 0;
+    hands.forEach(h => {
+      if(h.eq >= valueCut){ action[h.notation] = 'raise'; valueCombos += h.combos; }
+    });
+
+    // --- コール: ポットオッズを実現率込みで満たすハンド ---
+    // MDFは参考値。レンジが既に強い側は必ずしもMDFまで守らない
+    let defended = valueCombos;
+    hands.forEach(h => {
+      if(action[h.notation]) return;
+      if(h.eqR >= reqEq){ action[h.notation] = 'call'; defended += h.combos; }
+    });
+
+    // --- ブラフレイズ: 降りる予定のハンドからブロッカー優先で ---
+    const bluffTarget = Math.min(valueCombos * (raiseR / (1 - raiseR)), valueCombos * 0.9);
+    const folders = hands.filter(h => !action[h.notation])
+                         .sort((a, b) => bluffScore(b.cell) - bluffScore(a.cell) || b.eqR - a.eqR);
+    let bluffCombos = 0;
+    for(const h of folders){
+      if(bluffCombos + h.combos > bluffTarget && bluffCombos > 0) break;
+      action[h.notation] = 'raise';
+      bluffCombos += h.combos;
+    }
+
+    hands.forEach(h => { if(!action[h.notation]) action[h.notation] = 'fold'; });
+
+    const sum = { raise: 0, call: 0, fold: 0 };
+    hands.forEach(h => sum[action[h.notation]] += h.combos);
+
+    return {
+      action, hands, totalCombos,
+      pct: {
+        raise: sum.raise / totalCombos,
+        call:  sum.call  / totalCombos,
+        fold:  sum.fold  / totalCombos
+      },
+      meta: {
+        reqEq, mdf, potBefore, callAmt, raiseAmt, ip,
+        valueCombos, bluffCombos, aggressiveLabel
+      }
+    };
+  }
+
+  /* ---- 各ラインの組み立て ---- */
+  function build(cfg){
+    const s = { gameType: cfg.gameType, mttStage: cfg.mttStage, bb: cfg.bb,
+                tableSize: cfg.tableSize, scenarioFilter: 'all' };
+    const open = cfg.openSize;
+    const t3   = cfg.threeBetSize;
+    const t4   = cfg.fourBetSize;
+
+    if(cfg.line === 'rfi'){
+      const bits = openBits(cfg.hero, s);
+      const hands = ALL_CELLS.map(c => ({
+        cell: c, notation: c.notation, gi: GTO.idx[c.notation],
+        eq: GTO.eqVsRandom(c.notation), combos: comboOf(c.notation)
+      }));
+      const action = {};
+      let raiseC = 0, total = 0;
+      hands.forEach(h => {
+        total += h.combos;
+        if(bits[h.gi]){ action[h.notation] = 'raise'; raiseC += h.combos; }
+        else action[h.notation] = 'fold';
+      });
+      return {
+        kind: 'rfi', action, hands, totalCombos: total,
+        pct: { raise: raiseC / total, call: 0, fold: 1 - raiseC / total },
+        meta: { source: openSpec(cfg.hero, s).source },
+        labels: { raise: isPushFold(s) ? 'オールイン' : 'オープン', call: null, fold: 'フォールド' },
+        title: `${LABELS[cfg.hero]} オープン(RFI)`
+      };
+    }
+
+    if(cfg.line === 'vsopen'){
+      const villBits = openBits(cfg.villain, s);
+      const potBefore = open + SB + BB;                 // 相手のオープン + ブラインド
+      const r = solve({
+        heroBits: bitsAll(), villBits,
+        callAmt: open, potBefore,
+        raiseAmt: t3 - 0, ip: isIP(cfg.hero, cfg.villain, cfg.tableSize),
+        aggressiveLabel: '3ベット'
+      });
+      r.kind = 'vsopen';
+      r.labels = { raise: '3ベット', call: 'コール', fold: 'フォールド' };
+      r.title = `${LABELS[cfg.villain]} が ${open}BB オープン → ${LABELS[cfg.hero]}`;
+      return r;
+    }
+
+    if(cfg.line === 'vs3bet'){
+      // ヒーロー = オープンした側、相手 = 3ベットした側
+      const heroBits = openBits(cfg.hero, s);
+      const villBits = threeBetBits(cfg.villain, cfg.hero, s);
+      const potBefore = t3 + open + SB + BB;
+      const r = solve({
+        heroBits, villBits,
+        callAmt: t3 - open, potBefore,
+        raiseAmt: t4 - open, ip: isIP(cfg.hero, cfg.villain, cfg.tableSize),
+        aggressiveLabel: '4ベット'
+      });
+      r.kind = 'vs3bet';
+      r.labels = { raise: '4ベット', call: 'コール', fold: 'フォールド' };
+      r.title = `${LABELS[cfg.hero]} が ${open}BB オープン → ${LABELS[cfg.villain]} が ${t3}BB 3ベット → ${LABELS[cfg.hero]}`;
+      return r;
+    }
+
+    if(cfg.line === 'vs4bet'){
+      // ヒーロー = 3ベットした側、相手 = 4ベットした側
+      const heroBits = threeBetBits(cfg.hero, cfg.villain, s);
+      const villOpen = openBits(cfg.villain, s);
+      const potBefore = t4 + t3 + SB + BB;
+      const allIn = Math.min(cfg.bb, 100);
+      const r = solve({
+        heroBits, villBits: villOpen,
+        callAmt: t4 - t3, potBefore,
+        raiseAmt: allIn - t3, ip: isIP(cfg.hero, cfg.villain, cfg.tableSize),
+        aggressiveLabel: 'オールイン'
+      });
+      r.kind = 'vs4bet';
+      r.labels = { raise: 'オールイン', call: 'コール', fold: 'フォールド' };
+      r.title = `${LABELS[cfg.villain]} が ${t4}BB 4ベット → ${LABELS[cfg.hero]}`;
+      return r;
+    }
+    return null;
+  }
+
+  return { build, openBits, threeBetBits };
+})();
+
+/* ---- スポットUI ---- */
+const spotCfg = { line:'vs3bet', bb:100, tableSize:6, gameType:'cash', mttStage:'early',
+                  hero:'UTG', villain:'BTN', openSize:2, threeBetSize:6, fourBetSize:13, selected:null };
+
+const LINES = [
+  {key:'rfi',    label:'オープン'},
+  {key:'vsopen', label:'オープンに対して'},
+  {key:'vs3bet', label:'3ベットに対して'},
+  {key:'vs4bet', label:'4ベットに対して'}
+];
+
+function fillSel(el, opts, cur){
+  el.innerHTML = '';
+  opts.forEach(o=>{
+    const op = document.createElement('option');
+    op.value = o.value; op.textContent = o.label;
+    if(String(o.value)===String(cur)) op.selected = true;
+    el.appendChild(op);
+  });
+}
+
+function renderLineTabs(){
+  const w = document.getElementById('lineTabs'); w.innerHTML='';
+  LINES.forEach(l=>{
+    const el = document.createElement('div');
+    el.className = 'line-tab' + (spotCfg.line===l.key?' active':'');
+    el.textContent = l.label;
+    el.addEventListener('click', ()=>{ spotCfg.line=l.key; spotCfg.selected=null; renderSpot(); });
+    w.appendChild(el);
+  });
+}
+
+function syncSpotControls(){
+  const ps = POSITION_SETS[spotCfg.tableSize];
+  const bbs = []; for(let b=10;b<=150;b+=10) bbs.push({value:b, label:b+' BB'});
+  fillSel(document.getElementById('spBB'), bbs, spotCfg.bb);
+  fillSel(document.getElementById('spTable'), [6,8,9].map(n=>({value:n,label:n+'max'})), spotCfg.tableSize);
+  document.getElementById('spGame').value = spotCfg.gameType;
+  document.getElementById('spStage').value = spotCfg.mttStage;
+  document.getElementById('spStageField').style.display = spotCfg.gameType==='mtt' ? '' : 'none';
+
+  const line = spotCfg.line;
+  const heroLabel = document.getElementById('spHeroLabel');
+  const villLabel = document.getElementById('spVillainLabel');
+  const villField = document.getElementById('spVillainField');
+
+  let heroOpts, villOpts;
+  if(line==='rfi'){
+    heroLabel.textContent='ポジション';
+    villField.style.display='none';
+    heroOpts = ps.openOrder;
+  } else if(line==='vsopen'){
+    heroLabel.textContent='自分'; villLabel.textContent='オープンした人';
+    villField.style.display='';
+    villOpts = ps.openOrder;
+    if(!villOpts.includes(spotCfg.villain)) spotCfg.villain = villOpts[0];
+    const vi = ps.order.indexOf(spotCfg.villain);
+    heroOpts = ps.order.filter((p,i)=> i>vi);
+  } else if(line==='vs3bet'){
+    heroLabel.textContent='自分(オープン)'; villLabel.textContent='3ベットした人';
+    villField.style.display='';
+    heroOpts = ps.openOrder;
+    if(!heroOpts.includes(spotCfg.hero)) spotCfg.hero = heroOpts[0];
+    const hi = ps.order.indexOf(spotCfg.hero);
+    villOpts = ps.order.filter((p,i)=> i>hi);
+  } else {
+    heroLabel.textContent='自分(3ベット)'; villLabel.textContent='4ベットした人';
+    villField.style.display='';
+    villOpts = ps.openOrder;
+    if(!villOpts.includes(spotCfg.villain)) spotCfg.villain = villOpts[0];
+    const vi = ps.order.indexOf(spotCfg.villain);
+    heroOpts = ps.order.filter((p,i)=> i>vi);
+  }
+  if(heroOpts && !heroOpts.includes(spotCfg.hero)) spotCfg.hero = heroOpts[heroOpts.length-1];
+  if(villOpts && !villOpts.includes(spotCfg.villain)) spotCfg.villain = villOpts[0];
+  fillSel(document.getElementById('spHero'), heroOpts.map(p=>({value:p,label:LABELS[p]})), spotCfg.hero);
+  if(villOpts) fillSel(document.getElementById('spVillain'), villOpts.map(p=>({value:p,label:LABELS[p]})), spotCfg.villain);
+
+  // サイズ
+  const openOpts = [2,2.2,2.5,3].map(v=>({value:v,label:v+' BB'}));
+  fillSel(document.getElementById('spOpen'), openOpts, spotCfg.openSize);
+  const o = parseFloat(spotCfg.openSize);
+  const t3opts = [3,3.5,4,4.5].map(m=>({value:+(o*m).toFixed(1), label:(o*m).toFixed(1)+' BB'}));
+  if(!t3opts.some(x=>x.value===spotCfg.threeBetSize)) spotCfg.threeBetSize = t3opts[1].value;
+  fillSel(document.getElementById('sp3bet'), t3opts, spotCfg.threeBetSize);
+  const t3 = parseFloat(spotCfg.threeBetSize);
+  const t4opts = [2,2.2,2.5].map(m=>({value:+(t3*m).toFixed(1), label:(t3*m).toFixed(1)+' BB'}));
+  if(!t4opts.some(x=>x.value===spotCfg.fourBetSize)) spotCfg.fourBetSize = t4opts[1].value;
+  fillSel(document.getElementById('sp4bet'), t4opts, spotCfg.fourBetSize);
+
+  document.getElementById('spSizeRow').style.display = line==='rfi' ? 'none' : '';
+  document.getElementById('sp3betField').style.display = (line==='vsopen') ? 'none' : '';
+  document.getElementById('sp4betField').style.display = (line==='vs3bet'||line==='vs4bet') ? '' : 'none';
+}
+
+function renderSpot(){
+  renderLineTabs();
+  syncSpotControls();
+
+  const res = Spot.build(spotCfg);
+  const grid = document.getElementById('spotGrid');
+  const title = document.getElementById('spotTitle');
+  const freq = document.getElementById('spotFreq');
+  const legend = document.getElementById('spotLegend');
+  const math = document.getElementById('spotMath');
+  const detail = document.getElementById('spotHandDetail');
+  grid.innerHTML=''; detail.className='hand-detail';
+
+  if(!res){ title.textContent='このスポットは計算できません。'; freq.innerHTML=''; math.innerHTML=''; return; }
+
+  const badge = res.meta && res.meta.source ? srcBadgeHtml(res.meta.source) : srcBadgeHtml('model');
+  title.innerHTML = badge + ' ' + res.title;
+
+  const segs = [];
+  if(res.pct.raise>0.005) segs.push(`<div class="freq-seg raise" style="flex:${res.pct.raise}">${res.labels.raise} ${(res.pct.raise*100).toFixed(0)}%</div>`);
+  if(res.pct.call>0.005)  segs.push(`<div class="freq-seg call" style="flex:${res.pct.call}">${res.labels.call} ${(res.pct.call*100).toFixed(0)}%</div>`);
+  if(res.pct.fold>0.005)  segs.push(`<div class="freq-seg fold" style="flex:${res.pct.fold}">${res.labels.fold} ${(res.pct.fold*100).toFixed(0)}%</div>`);
+  freq.innerHTML = segs.join('');
+
+  const leg = [`<span><i class="swatch" style="background:var(--gold);"></i>${res.labels.raise}</span>`];
+  if(res.labels.call) leg.push(`<span><i class="swatch" style="background:var(--teal);"></i>${res.labels.call}</span>`);
+  leg.push(`<span><i class="swatch" style="background:rgba(255,255,255,0.05); border:1px solid var(--line);"></i>${res.labels.fold}</span>`);
+  legend.innerHTML = leg.join('');
+
+  for(let i=0;i<13;i++) for(let j=0;j<13;j++){
+    const cell = ALL_CELLS.find(c=>c.row===i&&c.col===j);
+    const act = res.action[cell.notation] || 'fold';
+    const div = document.createElement('div');
+    div.className = 'cell act-'+act + (spotCfg.selected===cell.notation?' sel':'');
+    div.textContent = cell.notation;
+    div.addEventListener('click', ()=>{ spotCfg.selected = cell.notation; renderSpot(); });
+    grid.appendChild(div);
+  }
+
+  if(spotCfg.selected){
+    const h = res.hands.find(x=>x.notation===spotCfg.selected);
+    const act = res.action[spotCfg.selected];
+    const label = res.labels[act] || res.labels.fold;
+    if(h){
+      detail.className = 'hand-detail show';
+      detail.innerHTML = `<b>${h.notation}</b> → 推奨: <b>${label}</b><br>` +
+        (h.eq!==undefined ? `相手レンジに対するエクイティ ${(h.eq*100).toFixed(1)}%` : '') +
+        (res.meta && res.meta.reqEq!==undefined ? ` / コールに必要 ${(res.meta.reqEq*100).toFixed(1)}%` : '');
+    } else {
+      detail.className = 'hand-detail show';
+      detail.innerHTML = `<b>${spotCfg.selected}</b> はこのスポットに到達しません(手前のアクションでフォールドしているレンジです)。`;
+    }
+  }
+
+  if(res.meta && res.meta.reqEq!==undefined){
+    math.innerHTML =
+      `ポット <b>${res.meta.potBefore.toFixed(1)}BB</b> に対してコール額 <b>${res.meta.callAmt.toFixed(1)}BB</b><br>` +
+      `コールに必要なエクイティ <b>${(res.meta.reqEq*100).toFixed(1)}%</b><br>` +
+      `最低ディフェンス頻度(MDF) <b>${(res.meta.mdf*100).toFixed(1)}%</b><br>` +
+      `${res.meta.aggressiveLabel}のバリュー:ブラフ比 <b>${res.meta.valueCombos.toFixed(0)} : ${res.meta.bluffCombos.toFixed(0)}</b> コンボ<br>` +
+      `ポジション: <b>${res.meta.ip?'あり(IP)':'なし(OOP)'}</b>`;
+  } else {
+    math.innerHTML = `オープンレンジは ${res.meta.source==='nash'?'Nash均衡の厳密解':'プレイアビリティを加味したモデル'}です。`;
+  }
+}
+
+['spBB','spTable','spGame','spStage','spHero','spVillain','spOpen','sp3bet','sp4bet'].forEach(id=>{
+  document.getElementById(id).addEventListener('change', (e)=>{
+    const v = e.target.value;
+    const map = {spBB:'bb', spTable:'tableSize', spGame:'gameType', spStage:'mttStage',
+                 spHero:'hero', spVillain:'villain', spOpen:'openSize', sp3bet:'threeBetSize', sp4bet:'fourBetSize'};
+    const key = map[id];
+    spotCfg[key] = ['bb','tableSize','openSize','threeBetSize','fourBetSize'].includes(key) ? parseFloat(v) : v;
+    spotCfg.selected = null;
+    renderSpot();
+  });
+});
+
 /* ================= Init ================= */
 (function restore(){
   const s = Store.get('settings', null);
@@ -1350,6 +1813,7 @@ document.getElementById('storageNote').textContent = Store.available
   ? '設定・解答履歴・マイハンドはこの端末に自動保存されます。'
   : 'この環境では自動保存が使えません。マイハンドはJSON書き出しで保存してください。';
 
+renderSpot();
 renderChartModeTabs();
 syncChartControlsVisibility();
 renderPosChips();
