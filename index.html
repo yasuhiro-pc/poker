@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0c3327">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="レンジ道場">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<title>レンジ道場 | ポーカートレーナー</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt-deep:#0c3327; --felt:#123f30; --felt-light:#1a5040;
+    --cream:#f2ead7; --cream-dim:#cfc4a6;
+    --gold:#c9a24b; --gold-bright:#e6c26e;
+    --teal:#4fa392; --red:#b5342a; --ink:#161310;
+    --line:rgba(242,234,215,0.14); --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse at 50% -10%, #1a5a45 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 100%, #0a2a20 0%, transparent 60%),
+      var(--felt-deep);
+    color:var(--cream); font-family:'Inter',sans-serif;
+    min-height:100vh; display:flex; justify-content:center;
+    -webkit-tap-highlight-color:transparent;
+  }
+  @media (prefers-reduced-motion: reduce){ *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;} }
+  .app{ width:100%; max-width:460px; min-height:100vh;
+    padding:calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(44px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); display:flex; flex-direction:column; position:relative; }
+  .app::before{
+    content:""; position:fixed; inset:0; pointer-events:none;
+    background-image: repeating-linear-gradient(115deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 3px);
+    z-index:0;
+  }
+  header{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px; position:relative; z-index:1; }
+  .brand{ font-family:'Fraunces',serif; font-weight:600; font-size:21px; color:var(--gold-bright); }
+  .brand span{ display:block; font-family:'Inter',sans-serif; font-size:9.5px; font-weight:600; letter-spacing:0.16em; text-transform:uppercase; color:var(--cream-dim); margin-top:2px; }
+  .stats{ display:flex; gap:12px; font-family:'JetBrains Mono',monospace; }
+  .stat{ text-align:right; }
+  .stat b{ display:block; font-size:17px; font-weight:700; color:var(--cream); line-height:1.1; }
+  .stat small{ font-size:8.5px; letter-spacing:0.1em; color:var(--cream-dim); text-transform:uppercase; }
+
+  .summary-bar{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; position:relative; z-index:1; }
+  .summary-chip{ font-size:10.5px; font-weight:600; padding:5px 10px; border-radius:999px; background:rgba(255,255,255,0.05); border:1px solid var(--line); color:var(--cream-dim); font-family:'JetBrains Mono',monospace; }
+  .summary-chip.mtt{ color:var(--gold-bright); border-color:rgba(201,162,75,0.4); }
+
+  .tabs{ display:flex; gap:7px; margin-bottom:14px; position:relative; z-index:1; overflow-x:auto; padding-bottom:3px; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab{ flex:0 0 auto; text-align:center; padding:9px 13px; border-radius:999px; font-size:12px; font-weight:600; border:1px solid var(--line); background:rgba(255,255,255,0.03); color:var(--cream-dim); cursor:pointer; white-space:nowrap; }
+  .tab.active{ background:var(--gold); border-color:var(--gold); color:#231a08; }
+
+  .card-panel{
+    background:linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015));
+    border:1px solid var(--line); border-radius:20px; padding:22px 18px 20px; position:relative; z-index:1;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 30px rgba(0,0,0,0.35); margin-bottom:16px;
+  }
+  .panel-title{ font-family:'Fraunces',serif; font-weight:700; font-size:16px; color:var(--gold-bright); margin:0 0 4px; }
+  .panel-sub{ font-size:11.5px; color:var(--cream-dim); margin:0 0 16px; line-height:1.6; }
+
+  .position-line{ display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:16px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--cream-dim); text-align:center; flex-wrap:wrap; }
+  .pos-badge{ font-family:'Fraunces',serif; font-weight:700; font-size:13px; color:var(--felt-deep); background:var(--gold-bright); padding:3px 11px; border-radius:999px; }
+  .pos-badge.opener{ background:var(--cream-dim); }
+  .src-badge{ font-size:9.5px; font-weight:700; padding:3px 9px; border-radius:999px; letter-spacing:0.04em; }
+  .src-badge.gto{ background:var(--gold-bright); color:#241a07; }
+  .src-badge.icm{ background:var(--teal); color:#0b2a24; }
+  .src-badge.model{ background:rgba(255,255,255,0.10); color:var(--cream-dim); border:1px solid var(--line); }
+  .eq-line{ margin-top:6px; padding-top:6px; border-top:1px solid var(--line); font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--cream-dim); }
+  .review-badge{ font-size:10px; font-weight:700; color:var(--felt-deep); background:var(--teal); padding:3px 10px; border-radius:999px; letter-spacing:0.04em; }
+
+  .cards-wrap{ display:flex; justify-content:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+  .pcard{ width:80px; height:112px; border-radius:9px; background:#faf6ec; color:var(--ink); position:relative; box-shadow:0 10px 22px rgba(0,0,0,0.4), 0 2px 0 rgba(0,0,0,0.15); display:flex; flex-direction:column; justify-content:space-between; padding:7px 8px; font-family:'Fraunces',serif; animation:dealIn .4s cubic-bezier(.2,.8,.3,1) both; }
+  .pcard.small{ width:52px; height:73px; padding:5px 6px; border-radius:7px; }
+  .pcard:nth-child(2){ animation-delay:.08s; }
+  @keyframes dealIn{ from{ opacity:0; transform:translateY(14px) rotate(-3deg);} to{ opacity:1; transform:translateY(0) rotate(0);} }
+  .pcard.red{ color:var(--red); }
+  .pcard .rank{ font-size:23px; font-weight:700; line-height:1; }
+  .pcard.small .rank{ font-size:15px; }
+  .pcard .suit-top{ font-size:14px; line-height:1; }
+  .pcard.small .suit-top{ font-size:10px; }
+  .pcard .suit-mid{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-size:30px; opacity:0.9; }
+  .pcard.small .suit-mid{ font-size:19px; }
+  .pcard .bottom{ align-self:flex-end; transform:rotate(180deg); text-align:right; }
+  .board-divider{ width:1px; background:var(--line); margin:6px 2px; }
+
+  .question{ text-align:center; font-size:14px; color:var(--cream); margin-bottom:18px; line-height:1.6; }
+  .question b{ color:var(--gold-bright); font-weight:700; }
+
+  .tag-row{ display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; }
+  .texture-tag{ font-size:10px; padding:4px 10px; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid var(--line); color:var(--cream-dim); font-weight:600; }
+  .texture-tag.strength{ background:rgba(201,162,75,0.16); border-color:rgba(201,162,75,0.4); color:var(--gold-bright); }
+
+  .actions{ display:flex; gap:10px; margin-bottom:6px; }
+  .chip-btn{ flex:1; padding:14px 6px; border-radius:14px; border:none; font-family:'Fraunces',serif; font-weight:600; font-size:14.5px; cursor:pointer; transition:transform .1s ease; letter-spacing:0.01em; }
+  .actions.three .chip-btn{ font-size:12.5px; padding:13px 4px; }
+  .chip-btn:active{ transform:scale(0.96); }
+  .chip-btn.raise, .chip-btn.threebet, .chip-btn.allin, .chip-btn.bet{ background:linear-gradient(180deg, var(--gold-bright), var(--gold)); color:#241a07; box-shadow:0 6px 0 #8a6c26, 0 10px 18px rgba(0,0,0,0.35); }
+  .chip-btn.call{ background:linear-gradient(180deg, #6cc0b0, var(--teal)); color:#0b2a24; box-shadow:0 6px 0 #2f6c60, 0 10px 18px rgba(0,0,0,0.35); }
+  .chip-btn.fold, .chip-btn.check{ background:linear-gradient(180deg, #3a3530, #262220); color:var(--cream); box-shadow:0 6px 0 #17130f, 0 10px 18px rgba(0,0,0,0.35); }
+  .chip-btn:disabled{ opacity:0.55; cursor:default; }
+
+  .feedback{ margin-top:16px; padding:13px 15px; border-radius:12px; font-size:12.5px; line-height:1.65; display:none; }
+  .feedback.show{ display:block; }
+  .feedback.correct{ background:rgba(201,162,75,0.16); border:1px solid rgba(201,162,75,0.5); }
+  .feedback.wrong{ background:rgba(181,52,42,0.16); border:1px solid rgba(181,52,42,0.5); }
+  .feedback .fb-title{ font-family:'Fraunces',serif; font-weight:700; font-size:14.5px; margin-bottom:4px; }
+  .feedback.correct .fb-title{ color:var(--gold-bright); }
+  .feedback.wrong .fb-title{ color:#e08a80; }
+
+  .next-btn{ width:100%; margin-top:13px; padding:12px; border-radius:12px; border:1px solid var(--line); background:rgba(255,255,255,0.04); color:var(--cream); font-weight:600; font-size:13.5px; cursor:pointer; display:none; }
+  .next-btn.show{ display:block; }
+  .next-btn.primary{ background:var(--gold); color:#241a07; border-color:var(--gold); }
+
+  .subtabs{ display:flex; gap:7px; margin-bottom:13px; flex-wrap:wrap; }
+  .subtab{ flex:1; min-width:80px; text-align:center; padding:8px 4px; border-radius:10px; font-size:11px; font-weight:600; border:1px solid var(--line); background:rgba(255,255,255,0.03); color:var(--cream-dim); cursor:pointer; }
+  .subtab.active{ background:var(--felt-light); border-color:var(--gold); color:var(--gold-bright); }
+
+  .set-block{ margin-bottom:18px; }
+  .set-label{ font-size:10.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--cream-dim); margin-bottom:8px; font-weight:700; }
+  .set-row{ display:flex; gap:8px; flex-wrap:wrap; }
+  .set-chip{ padding:8px 14px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,0.03); color:var(--cream-dim); font-size:12.5px; font-weight:600; cursor:pointer; }
+  .set-chip.active{ background:var(--gold); border-color:var(--gold); color:#241a07; }
+  select.bb-select{ width:100%; padding:11px 13px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,0.05); color:var(--cream); font-family:'JetBrains Mono',monospace; font-size:13.5px; font-weight:700; }
+  .set-note{ font-size:11px; color:var(--cream-dim); line-height:1.6; margin-top:8px; }
+
+  .grid-controls{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .pos-chip{ padding:7px 11px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,0.03); color:var(--cream-dim); font-size:11px; font-weight:600; cursor:pointer; }
+  .pos-chip.active{ background:var(--felt-light); border-color:var(--gold); color:var(--gold-bright); }
+  select.picker{ padding:9px 11px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,0.05); color:var(--cream); font-size:12px; font-weight:600; }
+  .picker-row{ display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+  .range-note{ font-size:11px; color:var(--cream-dim); margin-bottom:13px; line-height:1.6; }
+  .grid13{ display:grid; grid-template-columns:repeat(13, 1fr); gap:2px; background:rgba(0,0,0,0.25); padding:6px; border-radius:10px; border:1px solid var(--line); }
+  .cell{ aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:700; font-family:'JetBrains Mono',monospace; border-radius:3px; background:rgba(255,255,255,0.05); color:var(--cream-dim); }
+  .cell.in-range{ background:var(--gold); color:#241a07; }
+  .cell.pair{ background:var(--gold-bright); }
+  .cell.call-range{ background:var(--teal); color:#0b2a24; }
+  .legend{ display:flex; gap:13px; margin-top:12px; font-size:10.5px; color:var(--cream-dim); flex-wrap:wrap; }
+  .legend span{ display:flex; align-items:center; gap:6px; }
+  .swatch{ width:10px; height:10px; border-radius:3px; display:inline-block; }
+
+  /* history / review */
+  .review-stats{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px; }
+  .rs-box{ background:rgba(255,255,255,0.04); border:1px solid var(--line); border-radius:10px; padding:10px; text-align:center; }
+  .rs-box b{ display:block; font-family:'JetBrains Mono',monospace; font-size:17px; color:var(--gold-bright); }
+  .rs-box small{ font-size:9.5px; color:var(--cream-dim); text-transform:uppercase; letter-spacing:0.06em; }
+  .pos-acc-row{ display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); font-size:12px; }
+  .pos-acc-row:last-child{ border-bottom:none; }
+  .pos-acc-bar{ flex:1; height:6px; background:rgba(255,255,255,0.08); border-radius:4px; margin:0 10px; overflow:hidden; }
+  .pos-acc-fill{ height:100%; background:var(--gold); }
+  .hist-item{ padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--line); margin-bottom:8px; font-size:12px; line-height:1.55; }
+  .hist-item.wrong{ border-color:rgba(181,52,42,0.4); }
+  .hist-top{ display:flex; justify-content:space-between; align-items:center; margin-bottom:3px; }
+  .hist-badge{ font-family:'JetBrains Mono',monospace; font-size:9.5px; padding:2px 7px; border-radius:6px; font-weight:700; }
+  .hist-badge.correct{ background:rgba(201,162,75,0.2); color:var(--gold-bright); }
+  .hist-badge.wrong{ background:rgba(181,52,42,0.25); color:#e08a80; }
+  .hist-empty{ text-align:center; color:var(--cream-dim); font-size:12.5px; padding:24px 10px; }
+  .review-btn{ width:100%; padding:12px; border-radius:12px; border:none; background:var(--gold); color:#241a07; font-weight:700; font-family:'Fraunces',serif; font-size:14px; cursor:pointer; margin-bottom:14px; }
+  .filter-row{ display:flex; gap:8px; margin-bottom:14px; }
+
+  /* hand log form */
+  .form-group{ margin-bottom:14px; }
+  .form-label{ font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--cream-dim); margin-bottom:6px; font-weight:700; }
+  .form-row{ display:flex; gap:8px; }
+  select.form-select, textarea.form-textarea{ width:100%; padding:10px 11px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,0.05); color:var(--cream); font-size:12.5px; font-family:'Inter',sans-serif; }
+  textarea.form-textarea{ min-height:64px; resize:vertical; }
+  .tag-toggle{ display:flex; gap:6px; flex-wrap:wrap; }
+  .tag-toggle .set-chip{ padding:6px 11px; font-size:11.5px; }
+  .save-btn{ width:100%; padding:13px; border-radius:12px; border:none; background:linear-gradient(180deg, var(--gold-bright), var(--gold)); color:#241a07; font-weight:700; font-family:'Fraunces',serif; font-size:14.5px; cursor:pointer; margin-top:4px; }
+  .compare-box{ margin-top:10px; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid var(--line); font-size:12px; line-height:1.6; display:none; }
+  .compare-box.show{ display:block; }
+  .log-item{ padding:11px 12px; border-radius:10px; background:rgba(255,255,255,0.03); border:1px solid var(--line); margin-bottom:9px; font-size:12px; line-height:1.6; position:relative; }
+  .log-item .del{ position:absolute; top:8px; right:10px; font-size:11px; color:var(--cream-dim); cursor:pointer; background:none; border:none; }
+  .log-meta{ font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--cream-dim); margin-bottom:4px; }
+  .io-row{ display:flex; gap:8px; margin-top:14px; }
+  .io-btn{ flex:1; padding:10px; border-radius:10px; border:1px solid var(--line); background:rgba(255,255,255,0.04); color:var(--cream); font-size:12px; font-weight:600; cursor:pointer; text-align:center; }
+  .persist-note{ font-size:11px; color:var(--cream-dim); line-height:1.6; margin-top:6px; }
+
+  footer{ text-align:center; font-size:10px; color:var(--cream-dim); margin-top:8px; opacity:0.6; position:relative; z-index:1; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="brand">レンジ道場<span>POKER TRAINER</span></div>
+    <div class="stats">
+      <div class="stat"><b id="statScore">0/0</b><small>正答</small></div>
+      <div class="stat"><b id="statStreak">0</b><small>連続</small></div>
+    </div>
+  </header>
+
+  <div class="summary-bar" id="summaryBar"></div>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="quiz">プリフロップ</div>
+    <div class="tab" data-tab="postflop">ポストフロップ</div>
+    <div class="tab" data-tab="review">振り返り</div>
+    <div class="tab" data-tab="myhands">マイハンド</div>
+    <div class="tab" data-tab="chart">レンジ表</div>
+    <div class="tab" data-tab="settings">設定</div>
+  </div>
+
+  <!-- QUIZ VIEW -->
+  <div id="quizView">
+    <div class="card-panel">
+      <div class="position-line" id="positionLine"></div>
+      <div class="cards-wrap" id="cardsWrap"></div>
+      <div class="question" id="questionText"></div>
+      <div class="actions" id="actionsWrap"></div>
+      <div class="feedback" id="feedback"><div class="fb-title" id="fbTitle"></div><div id="fbBody"></div></div>
+      <button class="next-btn" id="btnNext">次のハンド →</button>
+    </div>
+  </div>
+
+  <!-- POSTFLOP VIEW -->
+  <div id="postflopView" style="display:none;">
+    <div class="card-panel">
+      <div class="panel-title">ポストフロップ トレーニング</div>
+      <div class="panel-sub">あなたはプリフロップのレイザー。フロップ→ターン→リバーと進みながら、ハンドの強さとボードの質感を読んでCベット判断を練習します(簡易ヒューリスティックによる概念practice。厳密なGTO頻度ではありません)。</div>
+      <div class="stats" style="justify-content:center; gap:20px; margin-bottom:16px;">
+        <div class="stat" style="text-align:center;"><b id="pfStatScore">0/0</b><small>正答</small></div>
+        <div class="stat" style="text-align:center;"><b id="pfStreetLabel">FLOP</b><small>ストリート</small></div>
+      </div>
+      <div class="position-line" id="pfPositionLine"></div>
+      <div class="cards-wrap" id="pfHoleWrap"></div>
+      <div class="cards-wrap" id="pfBoardWrap"></div>
+      <div class="tag-row" id="pfTags"></div>
+      <div class="question" id="pfQuestion"></div>
+      <div class="actions" id="pfActions"></div>
+      <div class="feedback" id="pfFeedback"><div class="fb-title" id="pfFbTitle"></div><div id="pfFbBody"></div></div>
+      <button class="next-btn primary" id="pfNextStreet">次のストリートへ →</button>
+      <button class="next-btn" id="pfNextHand">新しいハンドへ →</button>
+    </div>
+  </div>
+
+  <!-- REVIEW VIEW -->
+  <div id="reviewView" style="display:none;">
+    <div class="card-panel">
+      <div class="panel-title">振り返り</div>
+      <div class="panel-sub">これまでの解答履歴と、間違えやすいポジション・レンジを確認できます。</div>
+      <div class="review-stats" id="reviewStatsBoxes"></div>
+      <div id="posAccuracyBlock"></div>
+    </div>
+    <div class="card-panel">
+      <button class="review-btn" id="btnReviewMiss">間違えたハンドを復習する</button>
+      <div class="filter-row" id="histFilterRow"></div>
+      <div id="histList"></div>
+    </div>
+  </div>
+
+  <!-- MY HANDS VIEW -->
+  <div id="myhandsView" style="display:none;">
+    <div class="card-panel">
+      <div class="panel-title">マイハンド記録</div>
+      <div class="panel-sub">実際にプレイしたハンドを記録して振り返りましょう。オープン/相手のオープンへの対応のハンドは、簡易モデルとの比較も表示します。</div>
+
+      <div class="form-group">
+        <div class="form-label">状況</div>
+        <select class="form-select" id="mhSituation">
+          <option value="open">自分がオープン(最初のレイズ)</option>
+          <option value="facing">相手のオープンに対してアクション</option>
+          <option value="other">その他(ポストフロップ中心・複数アクション等)</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex:1;">
+          <div class="form-label">ゲーム形式</div>
+          <select class="form-select" id="mhGameType"><option value="cash">キャッシュ</option><option value="mtt">MTT</option></select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <div class="form-label">人数</div>
+          <select class="form-select" id="mhTableSize"><option value="6">6max</option><option value="8">8max</option><option value="9">9max</option></select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group" style="flex:1;">
+          <div class="form-label">スタック(BB)</div>
+          <select class="form-select" id="mhBB"></select>
+        </div>
+        <div class="form-group" style="flex:1;">
+          <div class="form-label">自分のポジション</div>
+          <select class="form-select" id="mhPos"></select>
+        </div>
+      </div>
+
+      <div class="form-group" id="mhOpenerBlock">
+        <div class="form-label">相手(オープナー)のポジション</div>
+        <select class="form-select" id="mhOpener"></select>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">ハンド</div>
+        <div class="form-row">
+          <select class="form-select" id="mhRank1"></select>
+          <select class="form-select" id="mhSuit1"></select>
+          <select class="form-select" id="mhRank2"></select>
+          <select class="form-select" id="mhSuit2"></select>
+        </div>
+      </div>
+
+      <div class="form-group" id="mhActionBlock">
+        <div class="form-label">実際の自分のアクション</div>
+        <select class="form-select" id="mhAction"></select>
+      </div>
+
+      <div class="compare-box" id="mhCompare"></div>
+
+      <div class="form-group">
+        <div class="form-label">タグ</div>
+        <div class="tag-toggle" id="mhTags"></div>
+      </div>
+
+      <div class="form-group">
+        <div class="form-label">メモ(ボード・結果・振り返りなど)</div>
+        <textarea class="form-textarea" id="mhNotes" placeholder="例: フロップK72rでcベット、ターンでチェックされて..."></textarea>
+      </div>
+
+      <button class="save-btn" id="mhSave">このハンドを記録する</button>
+    </div>
+
+    <div class="card-panel">
+      <div class="panel-title" style="font-size:14px;">記録一覧(<span id="mhCount">0</span>件)</div>
+      <div id="mhList"></div>
+      <div class="io-row">
+        <div class="io-btn" id="mhExport">JSONで書き出す</div>
+        <div class="io-btn" id="mhImport">JSONを読み込む</div>
+      </div>
+      <input type="file" id="mhImportFile" accept="application/json" style="display:none;">
+      <div class="persist-note">※このアプリはブラウザに保存機能を持たないため、ページを閉じると記録は消えます。続きを使う場合は「書き出す」で保存し、次回「読み込む」でJSONファイルを選択してください。</div>
+    </div>
+  </div>
+
+  <!-- CHART VIEW -->
+  <div id="chartView" style="display:none;">
+    <div class="card-panel">
+      <div class="subtabs" id="chartModeTabs"></div>
+      <div id="openChartControls"><div class="grid-controls" id="posChips"></div></div>
+      <div id="threeBetChartControls" style="display:none;">
+        <div class="picker-row"><select class="picker" id="openerPicker"></select><select class="picker" id="heroPicker"></select></div>
+      </div>
+      <div class="range-note" id="chartNote"></div>
+      <div class="grid13" id="grid13"></div>
+      <div class="legend" id="chartLegend"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS VIEW -->
+  <div id="settingsView" style="display:none;">
+    <div class="card-panel">
+      <div class="set-block"><div class="set-label">ゲーム形式</div><div class="set-row" id="gameTypeRow"></div></div>
+      <div class="set-block" id="mttStageBlock" style="display:none;">
+        <div class="set-label">トーナメントステージ (ICM)</div>
+        <div class="set-row" id="mttStageRow"></div>
+        <div class="set-note">バブル・最終テーブルに近づくほど、コール/3ベット/シャブ頻度を締めた簡易ICMモデルを適用します。</div>
+      </div>
+      <div class="set-block">
+        <div class="set-label">スタック(BB)</div>
+        <select class="bb-select" id="bbSelect"></select>
+        <div class="set-note" id="bbNote"></div>
+      </div>
+      <div class="set-block"><div class="set-label">人数</div><div class="set-row" id="tableSizeRow"></div></div>
+      <div class="set-block"><div class="set-label">出題タイプ</div><div class="set-row" id="scenarioRow"></div></div>
+      <div class="set-block">
+        <div class="set-label">データ</div>
+        <div class="set-chip" id="btnResetHistory">解答履歴をリセット</div>
+        <div class="set-note" id="storageNote"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Chen式スコア・簡易ICM・簡易ポストフロップヒューリスティックに基づく学習用モデルです</footer>
+</div>
+
+<script>
+
+
+/* ================= persistence (PWA) ================= */
+const Store = (function(){
+  let ok = false;
+  try { const k='__t'; localStorage.setItem(k,'1'); localStorage.removeItem(k); ok = true; } catch(e){ ok = false; }
+  const P = 'rangeDojo:';
+  return {
+    available: ok,
+    get(key, fallback){
+      if(!ok) return fallback;
+      try { const v = localStorage.getItem(P+key); return v===null ? fallback : JSON.parse(v); }
+      catch(e){ return fallback; }
+    },
+    set(key, value){
+      if(!ok) return false;
+      try { localStorage.setItem(P+key, JSON.stringify(value)); return true; }
+      catch(e){ return false; }
+    }
+  };
+})();
+function saveAll(){
+  Store.set('settings', settings);
+  Store.set('myHands', myHands);
+  Store.set('history', quizHistory.slice(0,200));
+  Store.set('score', {score, total, streak});
+}
+
+/* ================= GTO data layer ================= */
+const GTO_DATA = {"labels":["AA","AKs","AQs","AJs","ATs","A9s","A8s","A7s","A6s","A5s","A4s","A3s","A2s","AKo","KK","KQs","KJs","KTs","K9s","K8s","K7s","K6s","K5s","K4s","K3s","K2s","AQo","KQo","QQ","QJs","QTs","Q9s","Q8s","Q7s","Q6s","Q5s","Q4s","Q3s","Q2s","AJo","KJo","QJo","JJ","JTs","J9s","J8s","J7s","J6s","J5s","J4s","J3s","J2s","ATo","KTo","QTo","JTo","TT","T9s","T8s","T7s","T6s","T5s","T4s","T3s","T2s","A9o","K9o","Q9o","J9o","T9o","99","98s","97s","96s","95s","94s","93s","92s","A8o","K8o","Q8o","J8o","T8o","98o","88","87s","86s","85s","84s","83s","82s","A7o","K7o","Q7o","J7o","T7o","97o","87o","77","76s","75s","74s","73s","72s","A6o","K6o","Q6o","J6o","T6o","96o","86o","76o","66","65s","64s","63s","62s","A5o","K5o","Q5o","J5o","T5o","95o","85o","75o","65o","55","54s","53s","52s","A4o","K4o","Q4o","J4o","T4o","94o","84o","74o","64o","54o","44","43s","42s","A3o","K3o","Q3o","J3o","T3o","93o","83o","73o","63o","53o","43o","33","32s","A2o","K2o","Q2o","J2o","T2o","92o","82o","72o","62o","52o","42o","32o","22"],"nash":{"6_10":{"push":{"UTG":"fc07e03f013800e0030008002000800200080020008","MP":"ff47f03f013c08e003800c002000800200080020008","CO":"ffffe03f01bc09f043820e003000800200080020008","BTN":"fffffc3f81fc0ff043c20e103080c40220090020008","SB":"fffffffff1ff0ff87fc31f187c80e403a0090028008"},"call":{"MPvUTG":"f807002800200080020008002000800000000000000","COvUTG":"f807002800200080020008002000800000000000000","BTNvUTG":"f807002800200080020008002000800000000000000","SBvUTG":"f807002801200080020008002000800200000000000","BBvUTG":"fc07002801200080020008002000800200000000000","COvMP":"f807002801200080020008002000800200000000000","BTNvMP":"f807002801200080020008002000800200000000000","SBvMP":"fc07802801200880020008002000800200000000000","BBvMP":"fe07c03801200880020008002000800200080000000","BTNvCO":"fe07803801200880020008002000800200080000000","SBvCO":"fe07803801200880420008002000800200080000000","BBvCO":"ff47c03e01a00880420208002000800200080020000","SBvBTN":"fff7c03e01a00880420208102000800200080020008","BBvBTN":"ffffe03e01e00c80420208102080840200080020008","BBvSB":"fffffc3f01f80e80620208102080840220090028008"},"pct":{"UTG":0.1473,"MP":0.1755,"CO":0.2295,"BTN":0.3217,"SB":0.4511}},"6_20":{"push":{"UTG":"f847000c00200080020008002000000200000000000","MP":"f847c02e00300080020008002000800200000000000","CO":"f807e02e003801e0030008002000800200080020008","BTN":"ff67fc3f813c08e003800c003000800200080020008","SB":"fffffc3f81fc0ff043c20e103800c40200080020008"},"call":{"MPvUTG":"c006000800200080000000000000000000000000000","COvUTG":"c006000800200080000000000000000000000000000","BTNvUTG":"c006000800200080000000000000000000000000000","SBvUTG":"c006000800200080020000000000000000000000000","BBvUTG":"c006000800200080020000000000000000000000000","COvMP":"e006000800200080020000000000000000000000000","BTNvMP":"e006000800200080020000000000000000000000000","SBvMP":"e006000800200080020008000000000000000000000","BBvMP":"e006000800200080020008000000000000000000000","BTNvCO":"f006002800200080020008002000000000000000000","SBvCO":"f006002800200080020008002000000000000000000","BBvCO":"f007002800200080020008002000000000000000000","SBvBTN":"f807002801200880020008002000800000000000000","BBvBTN":"fc07802801200880020008002000800200000000000","BBvSB":"ff07c03801a00880420208002000800200080000000"},"pct":{"UTG":0.0716,"MP":0.0971,"CO":0.1317,"BTN":0.1976,"SB":0.2928}},"8_10":{"push":{"UTG":"f807c02e003800c0020008002000800200080000000","UTG1":"f807e02e003800c0020008002000800200080020000","MP":"fc07e03f013800e0030008002000800200080020008","HJ":"ff47f03f013c08e003800c002000800200080020008","CO":"ffffe03f01bc09f043820e003000800200080020008","BTN":"fffffc3f81fc0ff043c20e103080c40220090020008","SB":"fffffffff1ff0ff87fc31f187c80e403a0090028008"},"call":{"UTG1vUTG":"e006000800200080020008000000000000000000000","MPvUTG":"e006000800200080020008000000000000000000000","HJvUTG":"e006000800200080020008000000000000000000000","COvUTG":"e006000800200080020008000000000000000000000","BTNvUTG":"e006000800200080020008000000000000000000000","SBvUTG":"e006002800200080020008000000000000000000000","BBvUTG":"f006002800200080020008002000000000000000000","MPvUTG1":"e006002800200080020008002000000000000000000","HJvUTG1":"e006002800200080020008002000000000000000000","COvUTG1":"e006002800200080020008002000000000000000000","BTNvUTG1":"e006002800200080020008002000000000000000000","SBvUTG1":"f006002800200080020008002000000000000000000","BBvUTG1":"f807802800200080020008002000800000000000000","HJvMP":"f807002800200080020008002000800000000000000","COvMP":"f807002800200080020008002000800000000000000","BTNvMP":"f807002800200080020008002000800000000000000","SBvMP":"f807002801200080020008002000800200000000000","BBvMP":"fc07002801200080020008002000800200000000000","COvHJ":"f807002801200080020008002000800200000000000","BTNvHJ":"f807002801200080020008002000800200000000000","SBvHJ":"fc07802801200880020008002000800200000000000","BBvHJ":"fe07c03801200880020008002000800200080000000","BTNvCO":"fe07803801200880020008002000800200080000000","SBvCO":"fe07803801200880420008002000800200080000000","BBvCO":"ff47c03e01a00880420208002000800200080020000","SBvBTN":"fff7c03e01a00880420208102000800200080020008","BBvBTN":"ffffe03e01e00c80420208102080840200080020008","BBvSB":"fffffc3f01f80e80620208102080840220090028008"},"pct":{"UTG":0.1024,"UTG1":0.116,"MP":0.1473,"HJ":0.1755,"CO":0.2295,"BTN":0.3217,"SB":0.4511}},"8_20":{"push":{"UTG":"e866000800200000000000000000000000000000000","UTG1":"f867000800200080000008002000000000000000000","MP":"f847000c00200080020008002000000200000000000","HJ":"f847c02e00300080020008002000800200000000000","CO":"f807e02e003801e0030008002000800200080020008","BTN":"ff67fc3f813c08e003800c003000800200080020008","SB":"fffffc3f81fc0ff043c20e103800c40200080020008"},"call":{"UTG1vUTG":"c002000800200000000000000000000000000000000","MPvUTG":"c002000800200000000000000000000000000000000","HJvUTG":"c002000800200000000000000000000000000000000","COvUTG":"c002000800200000000000000000000000000000000","BTNvUTG":"c002000800200000000000000000000000000000000","SBvUTG":"c006000800200000000000000000000000000000000","BBvUTG":"c006000800200000000000000000000000000000000","MPvUTG1":"c002000800200000000000000000000000000000000","HJvUTG1":"c002000800200000000000000000000000000000000","COvUTG1":"c002000800200000000000000000000000000000000","BTNvUTG1":"c002000800200000000000000000000000000000000","SBvUTG1":"c006000800200080000000000000000000000000000","BBvUTG1":"c006000800200080000000000000000000000000000","HJvMP":"c006000800200080000000000000000000000000000","COvMP":"c006000800200080000000000000000000000000000","BTNvMP":"c006000800200080000000000000000000000000000","SBvMP":"c006000800200080020000000000000000000000000","BBvMP":"c006000800200080020000000000000000000000000","COvHJ":"e006000800200080020000000000000000000000000","BTNvHJ":"e006000800200080020000000000000000000000000","SBvHJ":"e006000800200080020008000000000000000000000","BBvHJ":"e006000800200080020008000000000000000000000","BTNvCO":"f006002800200080020008002000000000000000000","SBvCO":"f006002800200080020008002000000000000000000","BBvCO":"f007002800200080020008002000000000000000000","SBvBTN":"f807002801200880020008002000800000000000000","BBvBTN":"fc07802801200880020008002000800200000000000","BBvSB":"ff07c03801a00880420208002000800200080000000"},"pct":{"UTG":0.0478,"UTG1":0.058,"MP":0.0716,"HJ":0.0971,"CO":0.1317,"BTN":0.1976,"SB":0.2928}},"9_10":{"push":{"UTG":"f807c02e00300080020008002000800200000000000","UTG1":"f807c02e003800c0020008002000800200080000000","UTG2":"f807e02e003800c0020008002000800200080020000","MP":"fc07e03f013800e0030008002000800200080020008","HJ":"ff47f03f013c08e003800c002000800200080020008","CO":"ffffe03f01bc09f043820e003000800200080020008","BTN":"fffffc3f81fc0ff043c20e103080c40220090020008","SB":"fffffffff1ff0ff87fc31f187c80e403a0090028008"},"call":{"UTG1vUTG":"e006000800200080020000000000000000000000000","UTG2vUTG":"e006000800200080020000000000000000000000000","MPvUTG":"e006000800200080020000000000000000000000000","HJvUTG":"e006000800200080020000000000000000000000000","COvUTG":"e006000800200080020000000000000000000000000","BTNvUTG":"e006000800200080020000000000000000000000000","SBvUTG":"e006000800200080020008000000000000000000000","BBvUTG":"e006002800200080020008000000000000000000000","UTG2vUTG1":"e006000800200080020008000000000000000000000","MPvUTG1":"e006000800200080020008000000000000000000000","HJvUTG1":"e006000800200080020008000000000000000000000","COvUTG1":"e006000800200080020008000000000000000000000","BTNvUTG1":"e006000800200080020008000000000000000000000","SBvUTG1":"e006002800200080020008000000000000000000000","BBvUTG1":"f006002800200080020008002000000000000000000","MPvUTG2":"e006002800200080020008002000000000000000000","HJvUTG2":"e006002800200080020008002000000000000000000","COvUTG2":"e006002800200080020008002000000000000000000","BTNvUTG2":"e006002800200080020008002000000000000000000","SBvUTG2":"f006002800200080020008002000000000000000000","BBvUTG2":"f807802800200080020008002000800000000000000","HJvMP":"f807002800200080020008002000800000000000000","COvMP":"f807002800200080020008002000800000000000000","BTNvMP":"f807002800200080020008002000800000000000000","SBvMP":"f807002801200080020008002000800200000000000","BBvMP":"fc07002801200080020008002000800200000000000","COvHJ":"f807002801200080020008002000800200000000000","BTNvHJ":"f807002801200080020008002000800200000000000","SBvHJ":"fc07802801200880020008002000800200000000000","BBvHJ":"fe07c03801200880020008002000800200080000000","BTNvCO":"fe07803801200880020008002000800200080000000","SBvCO":"fe07803801200880420008002000800200080000000","BBvCO":"ff47c03e01a00880420208002000800200080020000","SBvBTN":"fff7c03e01a00880420208102000800200080020008","BBvBTN":"ffffe03e01e00c80420208102080840200080020008","BBvSB":"fffffc3f01f80e80620208102080840220090028008"},"pct":{"UTG":0.0906,"UTG1":0.1024,"UTG2":0.116,"MP":0.1473,"HJ":0.1755,"CO":0.2295,"BTN":0.3217,"SB":0.4511}},"9_20":{"push":{"UTG":"e876000800200000000000000000000000000000000","UTG1":"e866000800200000000000000000000000000000000","UTG2":"f867000800200080000008002000000000000000000","MP":"f847000c00200080020008002000000200000000000","HJ":"f847c02e00300080020008002000800200000000000","CO":"f807e02e003801e0030008002000800200080020008","BTN":"ff67fc3f813c08e003800c003000800200080020008","SB":"fffffc3f81fc0ff043c20e103800c40200080020008"},"call":{"UTG1vUTG":"c002000800000000000000000000000000000000000","UTG2vUTG":"c002000800000000000000000000000000000000000","MPvUTG":"c002000800000000000000000000000000000000000","HJvUTG":"c002000800000000000000000000000000000000000","COvUTG":"c002000800000000000000000000000000000000000","BTNvUTG":"c002000800000000000000000000000000000000000","SBvUTG":"c002000800200000000000000000000000000000000","BBvUTG":"c006000800200000000000000000000000000000000","UTG2vUTG1":"c002000800200000000000000000000000000000000","MPvUTG1":"c002000800200000000000000000000000000000000","HJvUTG1":"c002000800200000000000000000000000000000000","COvUTG1":"c002000800200000000000000000000000000000000","BTNvUTG1":"c002000800200000000000000000000000000000000","SBvUTG1":"c006000800200000000000000000000000000000000","BBvUTG1":"c006000800200000000000000000000000000000000","MPvUTG2":"c002000800200000000000000000000000000000000","HJvUTG2":"c002000800200000000000000000000000000000000","COvUTG2":"c002000800200000000000000000000000000000000","BTNvUTG2":"c002000800200000000000000000000000000000000","SBvUTG2":"c006000800200080000000000000000000000000000","BBvUTG2":"c006000800200080000000000000000000000000000","HJvMP":"c006000800200080000000000000000000000000000","COvMP":"c006000800200080000000000000000000000000000","BTNvMP":"c006000800200080000000000000000000000000000","SBvMP":"c006000800200080020000000000000000000000000","BBvMP":"c006000800200080020000000000000000000000000","COvHJ":"e006000800200080020000000000000000000000000","BTNvHJ":"e006000800200080020000000000000000000000000","SBvHJ":"e006000800200080020008000000000000000000000","BBvHJ":"e006000800200080020008000000000000000000000","BTNvCO":"f006002800200080020008002000000000000000000","SBvCO":"f006002800200080020008002000000000000000000","BBvCO":"f007002800200080020008002000000000000000000","SBvBTN":"f807002801200880020008002000800000000000000","BBvBTN":"fc07802801200880020008002000800200000000000","BBvSB":"ff07c03801a00880420208002000800200080000000"},"pct":{"UTG":0.0456,"UTG1":0.0478,"UTG2":0.058,"MP":0.0716,"HJ":0.0971,"CO":0.1317,"BTN":0.1976,"SB":0.2928}}},"combos":[6,4,4,4,4,4,4,4,4,4,4,4,4,12,6,4,4,4,4,4,4,4,4,4,4,4,12,12,6,4,4,4,4,4,4,4,4,4,4,12,12,12,6,4,4,4,4,4,4,4,4,4,12,12,12,12,6,4,4,4,4,4,4,4,4,12,12,12,12,12,6,4,4,4,4,4,4,4,12,12,12,12,12,12,6,4,4,4,4,4,4,12,12,12,12,12,12,12,6,4,4,4,4,4,12,12,12,12,12,12,12,12,6,4,4,4,4,12,12,12,12,12,12,12,12,12,6,4,4,4,12,12,12,12,12,12,12,12,12,12,6,4,4,12,12,12,12,12,12,12,12,12,12,12,6,4,12,12,12,12,12,12,12,12,12,12,12,12,6],"matrix":"f9/f3tzi4eLg3d/f3+7R1dHS09XU0tbW2Njt3tDPzc7R1dPV1tfY697Z0MrLztDT1NTV1erb1tLLx8vM0NTS1dXv3dnV0M/Gys7S19XW7uDd2NLRzcbIztHU1e7h4dvX1M/OxcrM0tfw39/f29fSz87GyM/U6t/f39/b1tLSz8jO0uvi4OHd4NzX09PQztXt4uHh4N/h3NjZ2dDU7+Th4eHg3+Hc3N7f0SCAtrS1trW0trKzs7SGV7W3tLi5uLi7urq9wMF0oKKlpqinqKusrMDAqXWeoqOkqainq6vAvqeldp2eo6SoqKmpv8SspqZ4n5+jpqiop7/Drq2qp3iboaSlqqm+xLCuqaele52eoqaowcOwsayppqJ6naGhpbzEr7Gvq6mmo3ydn6W9xa+wr6+rqaajfaCiwMa0srGvsKysqKp+pr7JsbSwsrCxsaqqrIAgSX+2tLS0s7WwsbGyTVG2nJ2foqGhoaOjpYbBWbKxube5uLu6ur7ApLx3n6Kkp6mpqaurvqO9pXafoKOmqamqqsCnv6mmeJyfoaSoqam+qsKrp6Z2nJ+joqipv6rDrKuppXydoKOlq76oxK+sqaakepqho6W7qsWvsa2opaN8nqCju6rFsq+wq6umpn2hpL+qx7KxsLCtqaeof6W/q8a0s7Cws6yoq6yAIUtJf7O0sbCzr7Cvs01TlraeoKShoaKipKNNnlGzm52foqCho6OlhsG8WK2zsra5uLq6vrumobl2n6Gip6qqqqu9qKS8p3meoKGkqamnvaqnvKmkep+goqeqqb2pqsGtqKN6nZ+lpKm9qajEr6umpXueoaOmt6moxLCuqqikepugpbqqqsWxsKyqqKN7naW6q6rGs7GwrqunqH+lvautxrWzsrCtqqyvgSNKS0x/sa+vr62urq5NU5eXtKKio6GjoqSkTqBUlbKeoaOioqKjo1Cem1OtnJ2go6KlpKSFwLy4Wq+vtLa5uru8uqukpLt5naCipKmqqrmqqKW4pHmdoKOmqau5qKinvKenepygpKaruqmpqsGqp6Z7np+kqLerq6nEq6qoo32eoqS3qquqxa+uq6mkfp+luaqtq8awsq6rp6qBpbmrrKzGtLGyrq2srYIdSUtLToCrp6mlp6eoTlGSkpK2oJ6fnKCgoU6aUpCRsp2gnZ6fn6JOmZZRjLCanKCfn5+hU5mUlFCrmZqcnp6goYbCvLm1Vauxsba6uLy2qKajnrZ1naChpqqotaanpKK5pXSaoaSlqrOop6Wkv6aheJuhoqSvpqanp8Gpp6V4naGjsKeoqKbFrKqnpHyhorGlpqmnxLGurKepfqSxqamnqMaxsq+rrat8HkpLTlBUgKKkoJ+jokxTk5OTlLmgoJ2eoqJPllOPkZO1n5+foKKgUJiWUIuRsJ6en5+goFOYl5VSj66anJ6dnp9Xn5ualVOrmZqdoqCgh8TAvLi1V6ywsra8uqymqKWkoLV1m6CipaquqKippKO5pHeboqSnqaimpqmkvqejep6ipaqmpqWnqMGrp6N8oqOrqKioqKjEr6ynqHynrKqnqKarx7KwraytgR1LTE9QWF1/nJiZmptOU4+PkZWXuaCeoKKhUJdUj46Sk7edn56fo1CXlFGMkJO2oJ2gnaBTmJOSUo6TsJ6fn5+gWZ2ZlZVTka6bn6GfoV+em5qWllOqmJugoaKGw8O/vLqzW62xtbm7pqimp6WiorV1nqSkqKKopaeqpqG6oXmeoKSiqaenqKmmvqame6Klo6anp6mpqcKrqKl+p6SrqqenqqnHrqutr38fSUpMUFZbY4CRkpKTTlKQkZCUmZm4oZ+goU+YUI2OkZWWtaCeoKFQmZNSiIyQk7aenp+eUpiRjlGOjpGxn5+dn1qcmJWTU4+Qspyfn6FfnpyVlpRRjK6Znp+eZ6CgnJiYl1SqmZydoYbDwsG8ure0WKuvs7iXp6anpqaiorV3m6Kkmamno6WopaK6oXmgopqoqKWmpqelv6eoeqSbqKmmqKemqcSrrKx/Ik1PUFJaX2dugIyOjlFUlJOPlpiYlrmkoqNSmVWOkJKXl5m4pKOlVpiYVYuPkpSVt6Gjo1aXlZFTjo+RlLajoqJenpmUklaNkJK0pKKhYp+empSVWI6RsaCkpGqgoJyYl5RZkK6doKJ1n5+enJiXlFmsnZ6ihsPCwcO9vLa2XLG0t5Srqqmpqaemort7pamVrKuqqaiqqKW+rHuolayqrKqqqquswrKwfiBMTk9RWGBmbXN/hohRVJGTkJOWlpebuKKjUJhTkI+QlJiXmrmgoVSYlVOKjpCXmJe3oKNVmJaRUouOj5KZt6OiXZuYlpFUi5CRlbiiomKdmpiXlFeNjpW1o6Jrnp2bmpWTV4ySsZ+hdJ+dnpmXl5RZka6en3mkoaChnpyallSvnZ6GxcTEwsK8vLe3Xra4jaypq6qpqqekpL98qI6sq6mpqqmrpqXCr34gTE5QUVhcZW1xeYCITlSTkpGWlpaXmZ24ok6aU4+OkpSXmZqbt6NTmJdSio+QkpWXmbijVZmWklKLjY+UmZi2n12bmpSSVoyOkZWZuKJhnZyYk5JUi4qTlbahaqCcmpmWkleNkZa2o3OenZybmZOTVpGRsZ54oKGfn56amJZWkrKefqGgoKCfnJmYllayn4XFw8PCwsK/u7y9X7qNq6yqp6uqqailpcN+IEtNTFFXXWRscXd3gExRkZKRlZaUlpmamrtPmlOOjY+TlZWZmJi5UJiUU4qQkJGUl5iZuFOXlZFTjI6QkZeWmLlbm5iVlFWNjY+Tmpe2YpyZmJSRUouMk5aYtmmdnJuXk5BVio2SlbhynJudmpaRj1WOkZS0eJ6gnp+bmZeTVZCRtX6goJ6goJ2bmJZXk7Z+oqOhoZ6fnZmZmli2hsTCxcHBw8O/vsHBXxF5srKysbOxsa6usbN/Tbazsra2tre3ubm5vr9vnp2hoaGhpKSjp73BpW6Zm56goaChoqW8vqShbJiYnZ+hoqOjvsKppKFwmZicn6Oko7zBqqejpHKVlpyfo6O8wq6pp6Wfc5WZmp+ivcKtrKmkop5zmJianrrDrK2sqaeioXOWmZy7xK2sqquppKGgdZqfusaura2rrKmmoqR3nr7Fr66uqquuqKioqXkuqK6srK6srK2rq6uusn/c2tre4uPg4eDj47fp0NDR0dHW09TW1ti2597RzM3O09TT1dXXtebb18/Ky8zQ1NLU1Ljs3NjTz8jJzNHV09S3797a1NDPx8vO0dXVtO7g3NfT0svGyc3Q1Lft4N/a19TOzsXKzdGz7t/e3tzX087OxcrOtO/g397f29jUz9DLz7bw4t/f3+Dc2NTUz9C08ePj4eHh4NzY2trQKkpJaWhtbHBva25sbkkjgLW0tLS1tLS2trdLhVm1tLS6t7a3ubu6b8DAdqGjpqiqrKuurm69v6l1oqOmqKmsrK5zvsCtp3mfoaOlrKmqdb7Er6qnfqGhoaWoqnW/wrGtqKd8naCjp6h2v8K1r6umpX6doaGmdb/DsbKuqqajf56go3PAw7Kxsayrp6R+oqV1wcW2sbGxrqypqYGodcLGtbSxsrOuq6uthC5IY0lobWxwbmxsbW1MJUqAsrK0s7OytLS0aE1QtJ2hpKSjo6Slp0yGv1qvtLa1ubi4u7tuvKS7dqKipqesqqysc7ynvKl4n6Glpquqq3W+qb+qp32goaOmq6d3vqq+raelfZ6goqiqd7+qw7KtqaV/nqCkqnK8qsGxrquopH+coaR0vazEs7Guq6elgKKldb6sxbWysq2rqKqDp3XBrcW2s7Kzr6qqrYQtS2JhS21sbm9wb25uTSVLTYCysrGwsLCxs2pOUpa0n6OlpaWmpKdnT51TsZ+hpKOjpKWoTYa/ulyvsrS0ube6unS7qKW4eJ2ipKaqqqpzu6unvaZ7n6GipqqqdrutqruqpXycoaWmqnW8rau/rKmlfaCipqh1u6usw62qqaSBn6Gjdbqsq8KzsKypp4KipXa7rq3FtLKvrKmpg6d1vq6tw7Kysa6sra2ELEdgX11Ja2praWxpakkhS01NgKyrq6qqq6xnTlCTkrWfoqGhoaKjZU+ZUJCxnZ6inqCio2ZRmZhSrZudnaGhoaNMhr+6tlqvr7G2uLe5cbaoo6K6eJyho6aoqnG1qqmluKV4nJ6jp6pytKmpprumo3qdn6SncbSpqKm/q6WmfJ+hpHS2qKeoxK6rqKV8oKVytamoq8OyramoqICjcreqqarFs7Cvq66rgypGXVtdX0ZoZmdpaWlJHUtLTVN/paWjo6SmZE1RkI6UtKCgnp+gn2FSllCPkbCen52fn59jUZaTUI+smZ2foKCfZVealpRSqZaanKKgoUqFv7q3tFarrbG1ubhtrKemoaG1cp6fo6apb6+lqKShuaR3nJ+lp26rp6Wlo7qmpHicn6FuraempqfAqqeje6KjcK+kq6iqxK2rp6l+pHCwp6Wop8Wxrqqqq38rR15eXGFfRmZnaWlrSRxKTE5UWn+dnZ6en2NMUI6NkZa2n5+doKFkUZJRi5CRs5+fn5+gZFSUk0+OkrGeoJ2fn2ZWmZeVU4+sm56foKFlXpyYmZZTq5ibnqKfSYXCvbq3tFeqrbG0um+lpqmko6C2dZyhpahwpKelpqOjuaF4nJ6kcKamqKanpbyopHuip3Gnp6mpqKq/qqapfaZwp6ipqKerxLCtrK2ALUdeXl5gX19HaWhoaUgfS0xPVFpigJSVlpVnTVONjpKVl7igoaCgZ1CUUIyOkpa3n56gnmRTlI9TjI+RtKGfoJ9mW5mVk1OOka+coJ6gZ2Cdl5iVU46tmp6hn2dnn5uYmJVVqZebn6NJhsPBvLq3s1mrr7K4cJynpqiio562d5yho26eqKWnp6eju6R5oaRwnaempqaqpL+op36jcJ6np6ioqqrBrautfilEXl1cY2JhXkZkZmZIHktNT1VcYmt/jI6NYU5QjouRlZiWt5+ho2ZRlE+Lj5GTl7ehoaBiU5OSUYuLkJO4n5+gZFmYlZJUjY+RsaCeomVhm5iSlFSOkbCdoaRkZ5+clpaVVI2rm5+hZ2+gn5uYl5ZUqZqZnkeGwMHAvbi1s1mssLRtlKmmpKmkoqC1eKClbpanqKamqqWmuah8pG6Wqaelqqippr2srX8pRVxdXV9hX2BbR2JlRh9JS09VXGFqc4CGh2ROT4+NjpOYlZi3oKFjT5VPioyQk5iZtp+jY1GSkVGKjpCTlLSfn2ZXmZKRUYuPj5O1n59mYJqWlpFTi5CSs6CeZmmempiTlFSMj6+coGZvnZ6amJeTVY+snJ1ieaGdnZqalpVYqZmcSIbAwMDBvLm4s1uvtGyOpqempqiko5+6e6Vrjqmopqemqaajv6x+J0VcW1tfXV1fXV1HZUYcSUtOVFthaXF5f4djS0+NjY+SlpWYmLihYk6UT4qNkJOWlpe3oWBRlY9QiYuSk5SVtZ9lVpiVklGJjpGSlbSdZl+bmJORVImNkZS0oWVnnJmXlJNTjIySsZ9kcJ2bmpaRklWNj7CdYXmcn52bl5eVV4+tmWJ+oZ2cnpuYl5VWrJxJhsPCwsDBvru2t1u0ao+oqKemp6WloqS+eydCWlxbXl1eXlxcXURGHEhLTFNZYGpyeHh/YkpOjI6PkpSUlJiXuWFMlU6Jjo6RlZSWmLhhT5WQTouNj5KTlpW3ZVeVk49PjI2Ok5WWtmRempWTkVOLj4+TmLRjZZyXlpKRUYiNkZS2ZnCbnJuVk5BUi5CQs2J3npqamZaTk1SMj7Jkfp+enZyYmJaUVpCwYX+fn56cnpmYl5dYsUiGwsLAv8LAvbi9vV0SP3mysbGwr7Ctr7GwQUi0l5WYm5yYnpucnYC/S6+vtrO2tra4uLq9obltmpufoKSio6Smu5+4oWyWm52foqSkpr2kvaekdJacm6ChoaO9pb6oo6Bxl5iboKSiu6XBq6ijn3SWmZqgorulwayppqCfdJiZm6G5psKtrqelo591mJqcuqTErK2sqaeinnSanbmnxq+urKqppaSleZ66p8Wxrq2sr6mnpqt5IT4+YV9laWhnZmdlZUAWerKxsbKzsrGxtLVAgFCysLO3t7W1trm2Zb6/cJ2eoaWkpKOmpmW9vaVtm5ygo6SlpqdsvL2npHSanJ2eoqGibL/Cq6aidpuanaGjo229wa2opqF3mJmboaNsu7+wr6elonaUmpyharzBrq6qqKOgd5aZnWu9wq6vrKmmpJ96nJ9tvcOvsa2vqaaho3uea8DDsrCurq2qp6eoey+Lpq6rrayrr6qsrKyQL6avra+ur6yvsLCxtK+A1tba3eHg4ODj4ra24tHR0c/T1tTV1ta3tOLb0czPztHV1dbWuLbo29fQyMjO0dbU1ra46tzW1c7HycvR1NW3ue/d2dXSz8fKztPXuLju4NzW1NDNw8nP0rO27d/e3NfU0M7Hys61uO/g3+Da2dXPzcvQtbrw4eDf4N3Y09TR0LW68eLh4OHi3djb2dEwX01Mam9wcHJxb3BxYS9KS2lsb3FycXByc1BNKX+xsrO0s7GytLZRTYZdsra1uLe2t7q5dG+9vXWjpqmsrq2usHZzvr+reaKkp6msq613d7vArKl+oKOlqayseni/wq+rqICjoqWoq3t5vcKyraqqgp+hpqd4eLzDs7CtqaiCoKOleHi/wba1r6yppIOkpXh4vsO1tbOwrKeohqZ3ecDEtrSysrKrrq+FMl1OZE1ubnFxb3BxcmIuS2JLbXFycXRycnFQTylOgLGxsLCwsLKyamhRU7Kgoqanp6eoqE9Mhr1gsLG3tre4ubt3dLuou3uipqerqqysd3i7qL2pfaGhpKmqq3p5u6u/q6l/n6OkqKx5eLqyv66pqIChoqapeHq7sMGvrKuogqGipXh6urDBs6+tqaaFoqV3eLywxLa0r66prIOoenm9r8a0trOwra6thjFaRmJhTWxtbm1vbXBeLkteYEprbm1ucXBwSUwlTU6Aqq2sqqutrWdkT1CTs6CipKWmpKZnZVGXUa2dn6Cjo6OmUU6Gvbpbr7GztLm4unJ0taejt3igo6Smq6l1drappLynfJ2fpaisdnW2rKi7qKd8naKlqHN3tKqrv6unpICfo6Z2dbSrq8Otr6ingaCkdHe2q6rDs7CsqqmBp3R3t6qtw7KysK2rsIMuWUhgXmJKbGpoa2tsXi5FW1xgS2lqamxtbUxIIkxOVYClpaWlpadkZFBQj5G0n6KgoKOjZWFRlE6Pr52ho6Kjo2llWJmVUa2bnKChoaJNT4a+urVasK2utbe4cHKvp6SguHmdoaSoq29xsammo7ekepyhpaZxcK2oqaa8qKN9m6CjcXOuqamqvqumo36gpHNzsaqoqsWurKipgKdzdLGrqqnDsbCrqq2BKldGXVxfYEhpaGdoal4pSFtaXV9JaGdnaWtJSB5LT1Jaf52cnJ6cZWFQUYqPkrSfn5+go2JhU5FQjJGwnp+gnp9mYlaWk1CNrpmdnpygZGdempaWU6uYmpyhoktKhb66tbRYqq6ytLlvbqWnp6Ogs3iboaKmbm2lpaaloLekeZygo29upaimp6S8p6V8nqRwcqeopqinv6qnpn+mcHOmpamnqMSvrKitgSxYR19dYmBiSmZoZmpeLElcWl5fYEdpamprSUofTE9TWmJ/kpWWlGRhT1CLjI+WtZ2goKBmYFKRT4yQk7Gfn5+gZ2ZYlZNRjZCwnaCdn2ZmXpmXlVOOrJudoaBnZWaemZeWVKqXm5+iSkuGwL65t7Naq6+0t29vnqanpaOhtXmcoKVwbp2kp6ijo7akfKCkbnGcp6enpqi7p6p9pHFznqmop6mrwaurrH8qV0ReXWFgYF9HZWVmWytIXFpeYWBfSGdna0lKH05PVVpjbYCOjo5kY1BQiI2Qlpi1oZ+gY2BTkk+Jj5GTtZ6hnmdmWZSQUouPk7KgoKFoZ16WlZRUjo+tnaCgaGhpm5mXlFWPrZyfoWZmcKCbmZeVVqmXnKFKS4bAwLu5t7Raq6+ybXCVqKampaKhs3qhpmxwlaWop6impLiqfKRuc5WnqKmnrKe8q6+AKVRFXF1gX2FhW0ZkZ1spRltZXmBiXmBIZ2dHSR9NT1RaY2pxf4eIY2RNUIiNkpSXlrWhomJhU5BRiY6SlJW2n6FmZVWTklGJjpKStZ+gZ2del5WSVI2QkbOhnmdpaZyWk5NVj5Gun6FlZW+em5aWlFaNq5udYmR3n5ybmZiVVqmZmUxLhsHAv7y6tbFcr7Jrb4+oqKamp6SfuXmlanCOqKinp6mno72sfShTRVxcYF1gX1xfSGdcKURaW11fX19eX0doR0YcS01SWmFpcXiAh2NfTlCKjY6Ul5aXtKFiXk+QUI2NkpKWlrSgaGVWk5BQio6Qk5e1n2VmW5eUkFGLjY+UtqBmaWiamJWSVIyOk7OfZ2dunpuWlJRVjI+unmVmd5ydmpaYlVWPq5pjZoCfn56YmJaUV66dSUmGwL++v7y4tbdcs21uj6mnpqWqqKOlvH4nU0FaXF1fXF5aXlxGWCdFWFhcYF5fXF5eRkVJHUlNUlhja3F3eIBiYExOioqPk5WUlJW3YGFPkE2MjJCRlZWVuGVjVpORUImLj5GUlrRmZVyVk5JRioySk5a2ZGVnmJWTk1OLjpKTt2VmcJ2ZlJSSVIuPlLNiZXicnZqWlJBWjZCvYmZ+n5ydnZeVlFeQrmNnf56fm52bmJeXV7FHSobBv7+/wbq4u7lgFD8/ea+xr6+vqausr0JJkLOYmp6bmJmcnZ5CmkmulZibmpubnJydgLy6TKyvsbS3tbe5urqin7Zum52eoKKlpaW7o6G8o3OZm52dpKOkuaaiu6Sfc5aZnp+horqlpb+no6B1l5mcnqS5o6XBqqaioXSWmJ2ft6akwq2ppqGhdZeanLimpcStrKano6F3nJ65pqXDsK6sqKeko3mfuaenxq+tra6sp6uqeiE/Wz5hZmdoZmdnZ2c+GD95sLCtrq+usLGzXkFJspebm56enJugn0N/vk+urrS0tra2trlkuaC5b52fnqGkpaenbLyju6VymZmeoKOkpGy7pcCmo3SanZ2gpaJruqm+q6Sid5ianKGjbLqmwa2opKJ3mZydo2u6psGwq6Wjn3mXmJ5tuqfAsK6qpKKgep2fa7upwbGvraqpo6R8nm29qsSxrq2wqqWqqX0mVkNDZGlpa2xnamhrWiE/QGJmaW1ra2prakZAHXmusK+vsK+ysbNFQYBVsbKytra1tbe5aWa5vHCeoaKmqKioqW1puryndJufoaOkpaZtb7y+q6Z3mp2foKalcXC6wK6opXqbmZ+jpnNyvMCwqqamepean6JxcbrAsauopaJ7mpqfb3C6wbOxrKmnoXqcoHByu8KzsbGrqKSlfqJvcbzDtLKur62oqql+L4qIp6yur66tqqytrJEuiaWsr6+ur7CwsLGSjy6irK+vrq+vr6+xs7Cqf9LW2t7g4ODi4ra2s9zQ0s/S09TV1Ni3t7Xj2tLOzs3Q1dbWtbm45trXz8nKzdDX1re4uera2NTOyMrN0da4t7jt3djT0tDGyc/Tsra37eDa2NXRzcbJzLW4ue3g4dvY1tHOy9C1ubvv4eDh3NnV1c/Ptrq78OLh4eDe2Nnb0DVhYFJSc3Rzd3R1dXVmM15QTm9wdHN0dXV2ZWIuTU1scHV0d3d1dVNRTi2Asa+wsq+wsrFVUE6GZLK0tLe2uLi5eHhzur18pqeoqa+xsHh7eLm/rH+jpaiprKt6eHq9va+qg6Glpqisfnx9usKxrKyGpKOnqnt8fbzBsq6qrIafo6l7fny6wrizrqynhaSme3x8vsS3uLGvrKqJpX18frzFt7a0sK6vsIo0XV1MY09ub3NwcXBvZDJcS2BObm9xcHNycWRhLklfTG5wc3JycnVQUU0pToCrq6qqrK6vaWZmUlOxoKKkpaelp1VTUYa9X66wtLS1t7l1dXS1p7l8oqalp62vdXZ3tqm5qH2ho6WprXh4erWrv6ungaGkp6h4eHe1rr6uqqZ/n6Gldnh3tq7Csa6qpoSipXl4eratwrWxrqisgqV6eXu3scW1tK+tr62GMVxbTWJlT2xvbW9vb2ExWUleYk9ubW5vb3FgXjBKXV9LbXBvbXFwTktNJVBUf6WnpaSlpWhjYlFSlLKgo6Wjo6VqaWZXl1Otn6CipqOiUU9Qhru3XKywrrS3uHRzc6+oprd6oKKkp653dXWvqKa7pn2coaWnc3V2r6ypu6qlf52jpHZ1dbGtrb6rqqWCo6Z1eXexrKzCr6ynqISleHd1sq6tw7Ovrqquhy9bWElfY2FJbGtobW5fLFdKW2FhTGlsbGxuX1osR1ldYEtpaWtrbEtLSSFPVFqAnpudnqFkY2BQUI6RsZ6jo6GgZ2diVpZTkK6en6KhomlpZl6al1WrmJ6goKJPT1CGu7i0XKytsrS3c3FyqKiiorh6naCkpnFzcaeqp6S5pHyeoKRxc3Smp6inuqmlf5+kc3Jzp6iqqb+rp6d/pHV1cqqrq6rCr6qsrIMsVlZGXF9hX0lqZ2prXitVRlxdYGBIaGdpaltbKUhYW11gSmdoaGpISUkfTVVYYX+SlZWUZF9fUU+LjZSxn5+dnmZkX1eTUo2QrZ6foJ9lZWNblZJUjqqanqGhZ2ZkZZiXlFOqmJudoE1LTIa8ubSvWaitsLZucG2bp6ainLF2m6GkcHFvnaanpKO3pHqhpXJvcJymqKilvKiofaRycnKep6emqb+prKp/K1dWR11gYGJhSGhoaF8sU0dcYWJgYEhmaWtdWytJWFpfYGJKaWlrSklKH1BVWmRtf46NjmJjYFJPiouQlLOfoKFnZmJWkVGKj5OyoKChZ2llXZWRVY6Qrp6gomdpaGeXlpRVkKyboKJmZ2dym5mWllenmpyfSUtMhr+5uLSxXKmssG5xcJOlqKaiobN5oqNtcnCVqqippqa3qHykb3NwlqioqKimuqqrfitYVkVaYGBfYV5IZmdeKlRHW19gYGFeSWhpXFwqSFhZX2BfXkpoa0hJSh9PU1tianF/h4lhYl5ST4mPj5WYtJ2hZmVhV5FTiY6QlLWdnmZnZlyUkFSLj5Gzn59oZ2dml5SSVY+Srp6faGdmb5qYlJVVjqqdn2RkZXqfmpiWl1apmZtKTEuGv7+9t7SvXa2xbHBuj6eop6ajnbd8pm5wcI6opainpqO7rX8qVFRFW2BfYmBcX0dmXSpRRFpdYGBfXmBIZ1tZKUVXW1xfX2BeS2pGSUgdTVFaYWpyeICHYmBdUk6IjY+Vl5i1n2dkYVaPUIqOkpSWtJ9nZWRckpFTio2PkbOgZmdmZpaUkFSMj5GwoWVnZXCcmJOTVI6PrJ5hY2V4nJyVl5NXjamaY2Vnf52cmZuXlFWsm0pLS4a+wL+6uLa3XrFubnCOp6mmp6ago7x+KlRUQVteX19hXFxcR1ooUURXXGBfYV9cXkdZWSlGV1lcXF9fXV5IRUZGHU5QWl5rcXZ4f2JfXk5Oi42QkpWWlrZnY19VklCKjY6Ul5S1ZGZiW5ORUYiOjZOWs2RkZGSVko5SiY2Qk7NmZmVwmpaTklWLkJOxYmZmd5ybl5WSVoqOr2FmZX2dnpyWlZRXjq9kZmN+nZ2dmpmWl1qwSUxLhr++v7y7uLq6YBU/QUR6rKysramqqqxDSpGRspmcm5udnJ+eRJpIi7CYmp2ZnJ2dn0Wblkmqlpebm52enZ1/vbm0UayssrG3uLi5uKOin7dymJuen6KipbiooaK2n3KWmJyho6O3pKajvKWgc5eZnKKktqWmpb6mo591lpmeobSnpqfDqqijoXiZmqCzpqanwq6pqKSgeZuetKampsOvrKumpaR6oLSnqajFsayvqqmmqXskQVxZP2ZnZ2doZ2ZoQRlCQ3murqusrK6usGBCS5Czmp6en5+eoZ5dRplJr5mcnKCcnZ+gQoC9uVGtr7Cytbi1uWu4pKC2cJmboKCko6ZuuKWju6J1l5ucoKSlbLeqpLqko3WXm5yfpW24qKm9qaOfd5mZnqBst6mnwamloqF6mJqdbbeop8Guq6amonqanW+6qKjCrq+qqaWlfZ9vuquqxK6ur62pqKl+KVhCXkNraGxuamlpalskQFtAZmlra2xtampHQh1Cea6urK2srLCwYF9GTLGZnZ+gn6GioUZCgLtVr66zs7O3trdubLekuXacnZ2lqKanb262prildpqcoKSlpnFyuae9qKR6mZyepKVwb7eqvKqlo3iZm56jcHG6q8GuqaiifJicoHNwuarBsKuppqN/np9wcbmrwrGvraikpn+hcXC7rcOysbCuqaipfy1aWkZHa2ptcW5ubW5eKFZERWdsbHBtbnBvXlokQkJoa25ubW9vb0lGQyN5ra6vrq2trbFLRkR/WbGwsLW0t7a4cGxst7x2oaGhpqmoq3JycLi7qHicoaCmqqdyc3K4u6qoe5uenqOodnV1u8Guqqd/nZ6hpXR0dLrAr6unpn6bnaJwdHS4v7OuqqikgZ6hdnR1ucGysa6rqKaConJ1dbrDtLGxrqmrrIM0iYmJpa+tra6sra2skzCKiaOtr7Csrq6vsZOSLoqfrrGvsLCur7KRkI8vm6ytr7CwsLGxrq6qpoDS1trc3+Dh4rq4trbe09DP0dLX19e3ubi449vQzc7O0tbWtre5teXa2M/Ky87T17e3uLjq2djUz8fK0NK0ubi57d3Y1dHOxcnQs7a5uO3g3NnW0s7Jz7S5ubnu4OHe2tbUz9C2ubm77+Hh4d7Z2tvPOGJgYFBUcHFxcXR0c2c1XV1QUnBxc3R1dnRpZDNcT1Jwc3N2dnJzZGJhLU1Oa3F0dXZ3dFNSUE4tgKqsrKusra5XU1NPhmSxsbC1trS2eXh1dLW7e6amqKyvr3l4ene1u62Aoqanq617eXh5t7yuqoGioqWqe318fbi/sa6qg6akp317e323wbKwraqHpKd7en1/uMK3ta6qq4Wlen1/fLjDt7azsK2vijRhX15QZlFscXBxcnFnNFxdTWRTbXB0cXRyZGMwWU5iUG5vcHFyc2JgXjBLX01ucnRwcnJTUFFPKVWApaamp6imbWppZldWr52ipKemqVVXU1GGumGurrKwtrZ4dnVzrqe4faGjp6utdnd2eLCpuKmCoaOnqXp2eXmvqrurqIKgo6V3d3l4r7G9raqmgqKleXx6ebCuwrGtrKqEqHt5e3mwrcC1sa6sroQzXFxdS2VlT25ucHBvYjNZWUtiZk5ub29tcGJfMVZIYGJPbG5tbW9hYV0tS11fTmtvcHBvTU9MTyVTWoCdoJ+foW1oaGJZVZOxnaGjpKRraWlmXZlUqp2eoaOkUVJSUIa6tl6rrq6zt3R0c3WopaO1fJ+jpqh1dnN0qKmmuaiBnaOkd3h0dKirp7iqpn+fpXR2dneoqqy9rKepgqV4dnl3qq2qwLCrq62DL1tZWEljY2FOa21rbmAvV1hLYmJhS2xsbG1gXC5TSV9eYU5sa21uX15ZLEhbXGFOa2pqbU5NTEojU1ligJaWlZhpaWRhVlGNkq+go6KhaGpnZF+WVI+snKCio2poZ2ZmmpZVqZudnqNPUE9Rhrq2sl2sqrCzcnJxc5+mpKK1e5yhpXJycHKeqaijtaJ9oKR0dHNynqirprqnqX6ldXN0c5+oqam9raysgitXVlVGYWFgYElmZmheK1ZTRl5gX15Ha2tsXVsqUUhcXGBgSmppal1bVytJWlpcYExnaGpISkxLIFRZX2l/i46NZmRkX1ZQjI+Sr6ChomhmZF9cklKNkKyfoJ9naGZkZpaSVoupmp2gZ2dmZm6YlZJWqZianUtNTU2GubaysVynrK5tcm5uk6mlpJ+ueZ6lcXBycJSmp6WjtKd7pW5vcnCVp6eoprmpq38tV1ZVRWFiYGBcSGdpXS1TVUheX2JgYEtqaVtaKlJHXF1fYGFJaWpaWlcqR1hcXGBgS2dpR0dISB9TWGBpdICGiGZkYGBWUImNj5Syn59nZmNjXJBTjY6TrKCeZmhlZGWVk1aOj6qcoWZmZWdtl5WTV46nmp5kZ2ZneJ2ZlpZXqJabSktNT4a9ubizsF2pr25vbnCOp6ilop+0fKRvcnFvkKeoqaWjt6p+KlZVVURfYWBiXVxJZ1wrU1NFXl9gX2BgSmpbWSlRRlxcYWBeYEtqWlhXK0daXF5iX2JKaUdKSUkeUldganF5gIVmY2JdV0+JjJCVlLKeZ2ZiYV2PUIiMkZKzn2ZnZ2Rlk45TjI+QrqFnZWRmb5iTkVWPj6ydYmZlZnmal5aUWY2ommZoZWWAoJqal5RZp5tMTEpNhr2+ubaytF6xbXFvcI2kpaiko6G5fSpWVVRDXmBfYF1dYEZcK1FTRVxgYGBfYGBIWVgpT0RZXGBfYV5fR1pYVidGWFpfYV5eYElGRkhHHVFZXmdyd3p/Z2NgXlNPiIuRk5aYtGRmY2FbkVGHjY+Sl7NmZWZiY5KQU4uOj5KzZmVnZm+XlJBWjY+SsGRkZmR3mpeTk1iOka1lZmZmfpyamJeTWI+rZGdmZX6dnpmYmJZbrUtLTE6FvLy8uba1uGAQQD9CRXmopqWhoqKkQUeMjIuzmpmZm5mamkKTR4mIrpaZmJiZl5pEk5JIh6qVmJmYmZiYR5SRj0WokpKWmZmZmH+/urWwTKursLG2uLmypaCdmbVvlZmcnqSjsaOjn5y2n22ZmJ2fo7GhoaKeuaGfcJWZm6CrpKOho72nop9xl5meraKhoqLDqqain3SbnKuipaSixK2qpaKidp2vpaOkosStraqnp6d3IjtYV1Q9YGJjYWRkZD0TQUNEeaippKaoqahbQ0mMi7GanZmZmpqcXEOWSIeslpibmZqbnFxHk5NHrJWXlpubnJxAf7y4tE6rqqyzt7W3Z7KjoZ62cpWanqCipGixpqKftaBxlZiaoKJpsqWmobmmn3OWmJyjabGio6S8pqGidJeZnmqypaOlwaumpJ94nZ5ps6Sno8CsqaaipHmeaLSmp6XCrq+sqaioeiZTQFtbQ2RmZ2ZnZWdWIz9YV0BlZmZnZmdqQkIXQUR5p6mnpqqpqV5cRUqMrpmdoJ2enqBdW0iTSayWl5ubn52fRUN/urVRq62usbWzt2trsqSgtXKZnJ6hpKVta7GjobiieJqanaGnbGyypqa6pKF3mJufo21rsaeovaekoXmYmZ5sb7SnqMCsqKOhe5qfbW+1qKjBsKunoqd8oG1utKiqw66trKiqqXwqWVZDW0ZlampraWtqWydSQ1pFaWhqam1qbFhYJEBXQmZpamtsbGxDREMcRXmoqaipqKmqYF9bSEmwmZ2eoJ+ioUpHRX+6VqytsrC0trVsa2yyord2nJ6io6inbW1ts6a3pHebm6CipnFwb7GnvKaleZmbn6RucXC0qbyrp6R6l5yfbnFys6rBramno32cnXFxcrKqwLCvqKSmf6FvcnK1qr+xsKyprKuBL1lZWERKampsbW5ta14sWFZHSWtqbG1ubXBbWyhUREVqbGxvbW9uXFpYJUJCaGlsbm5wbUhJRkMheaimqampqKxPS0pFf1qurbCys7S3bnJubLG5daCgoqanp3FycXCyuKh5nKChpKdycXJzsbqopH+anaGkdHRzc7O/ramlgJ2coXR0c3OzvLCtqaaAnKFzdHVztMCyrquop4GfdXN3dbTAtLOuqKqrgzCHh4aGqqysrKmrqaqPMIaHh6WtrKyrrq6wi4svhoSkrq+ura6vr4yNiy2DoKysra6sr6+Nj4mJLJupqq6vr7Cws7GuqaWA0dbY3d/h4bS3tre03tHP0dLT19eztbm2tOHaz83N0NXYtra3t7Xl2tjPyszQ1LG2t7W26d3Y08/GzM+yt7e4uOzd29XS0MrQs7i2t7fu4t3a1NbPzrW2uLa57+Hi3dna2tA5YGNhYlRUbnBydHNyZjdgYGJQVnBxcnR2c2llN11dUFJycnR2dXZmZmQxWVFSb3J1dnV1Z2ZjXi9OUGxyc3Z2d1RUVFNRLn+kpKWmqKlYWFZUU4ZjrbCvs7SzeXd4dnOvuH6ipaiqsHp6enh3rbmrf6KkqKt2ent6e625raiCoaSmfHt9f4CwvrKsp4alpXx9fHx9sr6yrqyvhaZ6fn9+fLG/tbKsrK6INWBgX19OZlFvb29xcmc2Xl5dUGlTbnBwcXJjYzdbWU5kUW9wcXF0ZGZgMVhPYFFvcHFxcmRkYl4wTmJObXByc3RUVVJSUilbf52doJ+ibGxqamZgU6yeoaSmplRWV1VThrdhqqyvr7N1dXN2c6aksn2io6eqdnZ2dnmoqLanfqCjpXd5enl5qaq5rKaEoKR4eHh5eamuuK6oqISneXp6eXurr7+xrKythTFcXl5dTmVkTW1ubnBjM1xaW05lZFBucG5xZGIxWFhMY2ZPbG1vcGJhXjJXS19hUmxvbXFhX2JeLk9dYlBtcG9uT1NRTU8nW2KBlJeYmGpramZiXVSOrZ+hpKRqbGppZGaYVqibn6ClUlJUU1GGt7NgqKyrr3J0cXRynaWjsnyco6R2dnd3daCopbikgKGldHh1dXWfrai3qKeBpXd3d3Z5oq2tvKurrIQtWVtbW0liYGNLampsYC5aWVlJY2FjTmxtbF9hLlZUS19iYk1tbG5iX1wvVktdYGFNa2trYF9aWS1KW15fUGtqbE5MTk9NIlpia3+Oj45naWZkYl1RjpGroaGhZ2hpaGVjlFaOqZyfompraGlmb5eUVKaYnqFPT1FRVYa1sa9dqKiscHVzcnKWpaOisX6goXBycnJxl6qoprKofqNvc3R1dJaoq6a3q6uBKFdXVlZFXV5gW0dmZVwqU1RVR11gX19KampeXSlTVUZeYV9fSmhrW1xbKlBKWV1gX0ppaF1bV1YoSVhcXF9Na2lJSEpLTCBZX2hxf4WHZWVlYl5cUIaLja2enWNlZ2VgY5BTi46om59lZWVnY2+UkVONppqcYWVmZGZ2l5WVVKKVmUtNTk1OhrazsKtaqKttcG9wb46kpKGdsH2ibnBwb3GOpqiioLaqfCpXVlZVR19gYF1dR2hbLFZVVUhfX2FhYEtpXl4rVFNHXmNiX2BKaVxbWilOSFxeX19iS2tdXFlXKEtZW11eYE1nR0pMSUseV2BncHqAiGRnZGBdXFCHjI+Tr59mY2ZmYmORUoqPkKyeZ2doZ2Nsk5FUi4+onGVlZmNleJSUk1WOpJpkaGlmZYCZlZiUWqaaSkxMTU6GuLaysLJcq29vcHBvj6alo6Chtn0pWFZYVUNfXl5eXV1JXCtVVFVGXl5fXWBiSVxdKVJTRV1fYF5fYEtbW1kpT0ZdXWBeYWBKWllYVChJVlteXWBhS0ZISEpIHlZdZ3F4d39kZWJiXlpQiYuPk5WwZGRmYV9hjlGGjJGSr2ZkZWVkbJGOUomOkKthZmZkZneVkpBXi42nZGhmZGZ+mJWWkliPqWZnZ2Zkf52YmJOVWqlKTE1MToa7ubaztLReEUBBQkZJeKCgnZ2enUNIioqMjrWamJqZmZtCk0mIiI2ym5mXmJqZRpOSSoeKrpaamJmYm0eRkI1IhqqUl5eYmJtNmJSTkUunk5WYmpubgMK9urWzTaqssbG5uqqio6Cem7RwlZqcoaSqoaGjnpy2oHKWmZydpaOioqKfuqGgc5acnaemoqShpL6noaB2nJ2no6SkoqTDq6ejpXmep6OipKKlxK+qpqeoeR88VVVVVzthYWBiYmM+EEFBREl6oZ+en6ChWkBHiIeLsJiZmJiZmllEkEaEirCWmpaYmplXR5GNRoeolpWZmZmZWk2UlI1Ip5OUlpqYmj2AvLe0sE6pq66ztLZkqaOhnpm0bZeYm56lZaqhoqGftp5xlpueoGSooKCjn7min3GXmZxlp6KioqK/paOfdpudaKuko6KlwamloaV5n2eroqKko8GtqaamqXoiUT1YV1k/ZGNhZWNmVSE7VlRXQGNiZGVkZUE9FURESnmhoaGhpKNdWkNHh4uvmZyamZudXlpJj0eKrJaYm5ydnF9cTZORSamVlZmam51CQ4C9t7JQramtsra1a2iqo6CdtXKXnJ2fpGlpqqSiobWhdJiZnqFoaamlp6C5oqB3mZudaWuqpKOlu6WjnXicnWpsraekpsGqp6OkeZ1qbaympKXBrqqoqap8J1JUQ1pcQ2VqZWdnZ1glUEBYXEVnaGdpZ2pXVCM/V1hBZWZpaGhqRD9BGUZKeaGkoqOjpF1cWUdHi66Zm6Ccnp5iXltNk0irlZmbnZ+dRUhCf7i1Uqqura+2tmpqaauiobN0mpueoqZub22so6O4pHiYm5+ja25sq6ejt6WgepicnmxubaqmqLunpaB7nJ1ubm2spqi/rKqlp3ydb2xwraipv6+qp6arfy1VWFZHYUdpaWtobGtcK1VVQl1IZmdtaWxsXFkpU0JcRWloamprbFtZVCVAWERlamprbWxJREdEHEp5oqCjo6KkZmFfXU5LrJmdnaGioUpLSEeAtlmpqq6vtLVubHBrrKO1d5yeoaWnb25ucKujtKZ4mpygo3FycXGtp7qmon2ZnKFvcXFvrai6qqWje5yecnJycq6tvq+spqeCoHBxcXKrqr+xrqqoqYEuWFlbW0lKaWtqa21uWy9YWFlFS2lqa25ubl9dKlZWSEppamttb21gXFkoU0ZIaG1ub25uYF1aVyRERWZpbW9wbkpJSkhGIXmfoqKjo6VMT01KSX9cq6ussbGyb29wb2yrt3acn6OkqXNycXBvq7WmeZueoKZwb3Fzc6u2qKV9mp2hcnR0dHSsu62ppYCgnnNydHV2rryvqqeqg590c3R0dq69s62qqKiDMoeJhYaKqKyup6irrY0wgYKEh6msrKusq6yOiTGBgoelrKyrq66ujIuIMICDo6qrqqusro2KiYcvhJ6rq62sr66QjY2Jii6crKuur6+vsrGvraajf9HU2Nzh4ra2trWztN3Q0dHR1di4tbS0s7Xg29DPzdDUsbW0s7a05drXz8rKzbK0tLa1t+vb2NPOzNGytba2t7nv39nU1dHQsre3tbe47uLd2trb0DlkY2BiYlNVc3FydHRqOF5fYGNUVHFxdHZ0aGQ4X15fT1RxcXJ0dWllZTZcXVNUcXF0dXdpaGVjMllRVXBycnd4ampmY18wUlNxcXl4dlVWUlVWVC5/nZ6ho6JZWFpYVlaGZKqqq7Kxd3l4eXd0prF/oqSmqnl4eXd7eqi0p4CgoqR6enp8eX2ot6ulg6Oke319fX2Aq7yvrKqHqX19fnx9fqq8sq+tsYk3XmBfX19PZ1FucXVzaTReXl5eUmdSbm9ycGdlNlxeXFJnU3BvcnNmYmI1WllPZ1VvcHJxZ2RjXjFZUWJTb3FzcmZlY2FfLk9hUm50c3RTVFZRVVQrYn+VmJeZb2ttbGlpZVepm5+hplZWWFZWVYWxYqWqq654dHd1dnido7B9nqKkd3R4d3d5n6azpYCipnp4eXp6e6Crt6mngqN4eXl5e3uhrLetrKyEMVtcXVxeTWRmTmpsbGMxXlxdXE5kZU9tbnBkYjRaW1tRZWRSbnBtYWJgMldaUWFlUW5wcmNjX18xV01hY1NsbnBjYWFdXS1QXmBUcnBwTlFSUlFTJ2FqgI2RkWtpa2hmZmZVj6mcoaRqbGtqaWZtllakmZ6gUlJTVVZVhrGtYqSqp291c3R1dJaioat8oqV0dXV1dXiYpqWzp4Ghcnd2d3Z3maqos6ypgy5aXVhZWUlfYV9KamlgLlpZWVlKYWFiTGtsX14uVlZZSmNiYkxrbGBfXy9WWEtfYWFMbmxeX1tZLVNPXl9gU21tYV9eXFksTFteXlJsbE5MTVBQTiNeZ3J/iIlmZ2tnZWNiUouOqJ6gaWhnZ2Zjb5JVjaSanmZpaGdoZ3iWk1ail5lPUU9RU1WGtK+rXqiocnRzcnR0j6SfnbF9oXBycnNxdJCnpKGzqX8rVVdVVlVDXmBbXElnXCpXVFVXRl1eXl9LZ1tcK1NVVEheXl9eSWleWlkoU1JIX15fYExpXFtaVSlQSVxdX19MaFtdW1dYKEtZW15hUGpGS0lJS04eXGhud3+HZmRmZGFfYlGGi46pm2ZlZWVjYmqPU4qMpJlgZGVkZWNzkY5UiqGXZWZnZ2dnfJeQkVajlklLTk1QU4aysKqtXahub3BwbXGOo6GdnbJ8KlZWVlRXRV1hW11eSVwqVVhVVUdgYFthXktdXCpTVFZHXV9fYV9JXV1aKVRQR11eXWBfTFxaWVgpUElbXGBhYExcW1pYWChMWVteYmBPRUlKSUpNHV1mbnZ4gGNjZmNiX2JShYqQkaxmZ2ZnZGNrjFKHkJGpZWRjZWZmdJGOVImLpGJnaWVlaX2UkpBVj6dlaGVmZ2h/l5STlFmnS01MT1FRhre0rq+vXxFBQEJGSlN5mJWUlZZDS4qIiY6StpibmZqcRJJIhYWKj7SYl5iZm0WUjkiFiouwmJiXmZtIk46NSYaHrpWYmZmZTpeSko5MhquVmJyZm1WblJWRkEmmkJSZmZx/wL68uLSwTamssLW6oqKgoaCemrRwlpqeoZ2ioqGjoZy4n3CWmpyepKShoaaju6OgdZubnqCioqGkpMGopKR2nqCmo6KkpqTErKimqnoeO1VWV1lZPF9fYV9iPRFAQURKU3qYmJaYmlpCRoeGiY21mpeWlppaRY9Hh4mMsJmWmJibW0iNjEiHia2Xl5eYmlxOlJKNSoipk5eanJtdVpeVk5BJp5SWmJucP4C/u7izsE+nqbCzuGWhoqOgnpyyb5eanqBloqCio6CctJ90lpqfZ6KgoaKkorejn3aanWmio6SjoqO+p6KjdqBnoaSkpqSlw6ympal7Hk88VVdYVzxfX2JjY1EfPVVSVVg9YGBhY2M+PhBARElQepmWlpeYWlZFRoWIjK+bl5iZm1lVRo1GhYqtmJmamJlcWU6SjkaHqJWWmJmZXFxVlo+PSaWSlJSZmUFAf7u2s69NqKqtsrhmZKGjoJyasG+Vmp2iZmahoaKfnLWec5SanGZpoqKio5+5op10mpppZ6GkoqSivqijo3igaWqhpKOjpMKrp6ioeSRRUz5YW1pAY2NkZWRWI05BVVZZQmRjZWZoVFIiPVRWWEFhZGNlZ0BBPxVCSVB5mpiZmZtcW1hHSoiMr5mbm5udYF1cTI9JiaqWl5qZnl9eXFSUkEqnk5eYm5xDRESAuLWxUamorrK0aWlpo6KenbRymJqcomhpaqKlop+zn3aZmZ5qammipqWkuKSfeJydam1ppKWlpb2mo6R6n21tbaSmpabBqqeoqnwoVlRSQ11bQ2dnZWZoWChSUkRaXkVnaWdoaVdXJlBAW1tFZmZpZ2pYVFElQlZXRGdoaGlqQ0VCRBpKUXmZmZqanGNgXllNS4ysm5qfnaBhYV9dU5NMqZaZmp6dR0dJR4C2sleoqqywtGxsa2qjoZ6yeJmcoaBsbm1tpaShtaN3mJydbm1rbKKopbamoHmbnW5tb22jpqi7qKWle59vb3Bvpqmmvq2op6h/K1hWV1hGX0VnaGppbFosV1hVR15IZ2lsa21cWSpUVENfSmhobGpsXFtXJ1BGWUdoaWtrbVpbV1UlRFhFZWlqbG1JSkdIRx5QeZmcnJyeZGZiXlxUS6mWmZygoEtMTEpJgLNYqaitrbNtbmxuaqKgsXWan6GkbG9ubm6ho7KiepqbnnFvcXJypqi3p6J7naBub3JycKWquKemp36fcnJxdHGlq7yuqaipfjBaWlxYWkpMaGtsbW9gLVhaWlpKS2pqa2xuYF4tV1ZYR0tpa2xtbF9dWitVV0hLa2ttb3FfXFtXJ1JHSWltbHFvYF9dW1clR0hna29ucUtLSkxKSCJ5mpmdnZ1PT1BOTUx/Wqinqa+vcG5vcW9uorF1nZ2jpW5xb3JycaKwpHmYnKBycm90cnWjtaigfZ6gc3V0dHZ1prmrpqaBoXN0dHV0dqe5rqmqrIQxhIOFhYuKpKumqKiqjDSDgoOHjaiqq6usrouIMH+Ag4anq6qqq6yKiIUxfIKFo6yqqqutjIqFhDB/gqGqqamsrJKOh4iGMIGeqamsra6Pko2LiIkvm6iqra6tsrCyrqinpYDQ1Nnd4LSzsrOztLPd0c/Q0tSysrKzs7S24drQy83PsLSytLS2teXb1c/N0LG0tLO1t7bp3djXz9G0tre2tra57uDY2tzSOmJiYmNlZFJVb3NydWo5YmFjY2FVVnJzc3dpZzhcYGJiVVVwcHN0aGdkN15eX1NVb3BzdmhoZmQ1XV5UVnRxc3RmamVkYzJdVVdxdHV5amhoZWNjLlVWcHR5elZYV1ZXVlcvgJaXmJpYWFpcWVhahmWlpaeueHl3d3h3eZyugJ6io3h5eXd6e3yer6OAoKV7enp5enx+obKnp4OkfXt+fX19gaK0qqushzVhX2BfXl9OZlFtbnJmNl9fXmFgUmhUcHNyZmY1XVxgXlFoUm5xcWZlZjVaXF1SZ1NtcHJmZGNhNFlcUWRWcHBxZ2dlZF8yWlNkVnFwc2VnY2RhYC5VZFZxdHVTVlVXVVdYK2mAjo+Sb25tb2tra21VopifoFZWVlhbWFuFrGOho6dzdXZ1dXl3lJ+pfp2hd3Z4eXl4epijq6aDond7eXp7fH2aprCqqYYzXVxaW1tdSmNiTmltZTJcXVpcXE5kZFBtbmVkMVpbWltNZGNRbG1jY2AyWVpbTWRkUW5vY2NhYTFYWFFiZVVvcGJlYl9eL1dQYGNXb25jZGJhXlwuVGBjV3FvT09SUVNSViZocX+Ki2pqaW1oZ2ZtVoujmZ1naWpqa2lpeJJXoJaWU1JTVFdaWoauqWGipXJ1dXR0dXePoJ2rfaBzd3R3d3l4k6KesKiBLVlaW1laWkZiX2BJamAvWFdZWFlLYGBjTmtfXixXV1dXS2BgYExsYV5cLldWWEtiX2FPbF1gW1wsVFRMYWJjUW1gX15dWypVUF9gZFNtXmFgXVpbKk1eXmFWbkpMTU1PUlAiZ3B1f4loZ2doZWRka1OHiqKaZWdoZ2hnZXaNUoegmGVmaGdoa2h9lI9WoZZMUVBTU1Vchq6pql6lcXRzdHNydJCinJ6wfihXVFZUVVVEXl1eXEddK1dVVVVWRVxeX2BJXVwoVFNTVEZdXl5gSFtcWSlTUlFIX11gXkxbWlpXKFJSSFxfXl5MXF1YWVgnT0xaXWBhUFtaW1lYVidOWVtfZFNFR0dLS0xQH2VtdHZ/ZmVjZWNgYmpPg4iKpGJlZGRlZGN0iVCDiKBjZmNkZWVleo+LVYigZGhlZWZnaH2Rjo9VoUxOTU9QU1eFraqpql4PPkFCRUxRWXmKi4yNQkiJiIqNkJC2mJmbmUSTR4SGiZCQtZmamJpGk4xHgYeIjLKZl5qZSZKPiUiEiYuwmJmYmU6Wk46NSYWKrZWamJlVmpaRkIxHiKmVlpmZXZqZlpOSj0unkJWXmYDAvr+6uLSzTaqssrWUo6CgpJ+dm7Nwlpuek6OjoqKhoJy4onObnpWkoqKloqOivKOkdZ2UpaOgo6SjpcCmqKp4IDxXVlZXV1c8YGBhYz0SQEBDS1BaeZCQj49aREeGh4qOkbSZmpiZXEWNSIOHio60mJiYmVpHkIpIhoiLr5iZmppeTZOPjkmFiq2UmpibXlWWkJGNSoapk5eamF1em5aTkZFMp5GVmJo/gL++ura0sk2nrLG0Y5eipKKenZu0cpaYnWaXoqGio6CetaB0nJ1ml6SjoqOlobqjpHaeapqkpKOjpKS/pqmoeCBPO1dWWFdZPWBiYmRSHz1VUlZaWTxfYmJkPkARQkVJTlp5j5CRj1pZQ0eChYqNs5iZmppZV0iKR4eJjLCZmpuYXlpNkI1IhYyrl5qXml5eVZKRjkuHp5SYmplfXV6WlJOQTaWSlpicQUB/vbm3sa5QqKuvtGdnlqKiop6csHCWmp1maJmho6KhnbSgdJmcaGiao6Sjo6K6o6V2nmlpmKWjo6WmvqmoqXkgTlA7VVpWWD5hYWNiUyBKPFRWV1Y+YGFkY1NPHz1NU1ZYP19hYWI+Pj8SRUpQV3mNkI+PWlZVREeGh4qumZiZmV1ZWU6MSIeJrJaYmJpcXVtTj49LhqmVmJqYXlxcXJWRjkyjkJKXmkBBQn+4tbGtUKSprLJlaGOWop6dmbFxlpicZ2hmmKOioZ21n3ebnGhoaJijoaShuKKjd55paWiXo6Oko72mpql5JFNTUD5bW1pDY2ZkZVYlUE1AWVtbQ2RlZWRWUCNNQFdZWEFkZGRmVVJPIj1UV1dDZGVjZUFCQz4VSE9XeZGSkJBhXllYTkqIjK6ZnJybYV5dXFSQTIiplpmcm19fX11clZBMppSXmpxFRUZHf7exr1OoqKqvaWtnaZmioJuxdpeaoGpsammYpqSgsp91m51ra2lpmaWmo7ilpXmea25ta5ump6e7pqaoeihWVlRVQFxdRWdoZmlbKFRSU0ReXEVnZ2lqWVgpUlFEXFxGZmlpa1lXVSdOQFldRmZnZ2lZVlVRJkNWWkVnaGdoRkZFQ0UaUll5kJCTk2NgXlxcVEqLqpmcnZxhYWNhXl2RS6eUmJufR0lISkiAsrBVpKiqrWpta2xrl6GdrXWYm51rb2xtb5ylobSheZmeb25ubm6cp6W0oqJ6nW1vbW9vnKeouKeop38tWVlZWFlGXUhoaGxuXStZVlZZRl9IaGhubF9aK1VWV0hfSGhpa2tdW1ksU1REXUtpa2xsXFxaVSdRR1xJampsa15ZW1lXJUZbSGhrbG5JSUpHS0ofWXqSkJWUZWNlYmFfXUyllJmbnUtLTk5OTYCvWaOjqalsbm5ub22Yn652mZudbXBvbXFwmaGwoXqbn3JydHJxcpumtKOlgJ1xcnJxdHKcqbSnpqd/MF1bWlleW0pLa2tscGExWlpaXFtJTGlsbW9gXS9VV1hbTExqa2ttXl1ZLVNYWUdQaWpsbWBgXFgrVVZKTW1sbm9gYF5aWydUTUxrbm5xX2FeW1lZJE5OaW1wc0tNT0tNTk4ieZKSlJVMTVFSUE9QgF6goaWob3Bub3BvcZmreZmannBycXBxdXSbrKB7mp1ydXJ0dXR3m66jo36feHR1dHZ5e5+1qKengjGFhYSEh4iKp6amqaqMMYGAgoWIiqarqqqri4kyfX+DhYelqamqq4uIhS95foKFpqiqq6qKiIeAMH59g6KpqKqpj4yIhoAwgIKfq6yrrY2Oi4eHhi+AnamqrK2PkJCNh4qKLpqqqaywsrKvr6yqpqF/0NTY3bC0s7KzsrKy3NHN0dKxs7Kxs7W0teHY0M/SsrSzsbO2t7Xm29vQ0bG1tLK0s7a46dvd3NA5YmVhYWRkYVRTbm5xZzpiYV9iY2NUVnBydGdrPGBeYmNkVFZyc3RpZmg5W15jYldYcXF0aWZmYjhdXmBTVnFwcmppZ2ZlNV1dV1lydHZpaWdnZWQwXVpbcnV4aWhqZ2ZlYjBaXXR4fFVYV1tXW1xfL3+MkJBZWV1dXVxfYYZmn5+gdHl3d3Z6enyVp36coXd5e3p4en9/l6ekg596e3t6enx9g5ipqaaEN15eXmBeXVtQYlFubmc1Xl9dYGBeUGVTcG9mZTZeXV1eXlBoVHBwZ2NlNlxbXl9SZVVwb2ZmZGE1XVxcVWdYcHBmZ2RkYjNbXFNnWXBxZmRmZGNhMltVZltzb2VlZWVjYGIvWmdcdXdTU1RWV1dcXitzf4iLaWtrbW5tbmx2V5qTmVNVWVZZXFxghqNknqB1dXZ2dnh6e46apn6ednd3eXl5e4CRnaelgDBeXFxbXVtbTGFhTmtlMl5bWVtaWk1mY09vZGMwWVlaWl1LY2RRa2JiYDBYWFpbT2NiU2xhYWFeL1pYWU9lZVNtZGNgYF4vV1hUYWVXb2NhYWBfXy9ZVGFlW25hYWJjXl5cLVhgZl11TU5QU1VVVlonb3d/iWdqa2traGlpdlOFnJNpaWtpaW1ra36KVpqUUFFUVFhYXV+GpKRennF0c3V2dXZ7j5mapn4rWlpZV1tYV0ddYGFLYS5ZVVdYWFdHYWJiTF5eLVhWV1lZSF5iYUxgXF0sVVdYWUlgYGFOXl9cWi1VVldMYmFiT19cXFtbK1RVUF5jY1RiX15cXFkrVVFfYWZWXl9dXV9bWitRX2JlW0pLS01QUlZXIm90doBjaGVoZmVkZ3VTgoWbZGllZ2hoaWl6h1WFmmZoaWdoaWttfIuLVZ1OUFJSU1ZaYIelpKdgFUNESEhQVl1oeYaHh0VMio2KjpGPj7idnp1GlUyHh4yOkZC1nZqdSJSOTYSHjI6RtpuenUuTj4tLhIWKjbSbnZtUlpKRi06JiY2wnpqeWpuXlI6PToaHrZmfmmKamZeTk5FNh6mYmp1rnJialpWTkE+mlpicf8DAvr+7t7KwVK2ztY6np6WlpaOgn7h0nqKPqaeopKemo6S8p3aij6inpaalp6elwauteiA7VVZUWVdXWDxbX2E8EUBDREtUW2N5hoaIWUNJh4WIj5KQtJuZmllFjkmDh4qMj7SbnJlYSI6LRoKJiY2ymJmbW06UjotJhYmLsJqamVxXlpGNkEqHi62Wm5tdXZmWkZCOTYaplpiaXGiYl5SSkY9LppSVlz+Avr69ubexsVGqr7Fhj6Kho6Khnp2xcZ2eY5Cjo6KjpKGftqR1oGOPpaWjo6WlorqpqXggUDpXVFlZWlk9Xl5fUyA8VVRWWFhYP15jYT0+EkNES1JaYXmIiIdbWUVIgoiJjpKzmpqZWVZFi0eDhoyOspmamVxdTo+MSISJjq6ZmZldX1aTjo5Lhoisl5qcXV9elZKRkE2IqZWXm19daZyYlJGRTKKUlJo/QX+9vbq1s7BRp6yuZGWPo6OioJ2bs3WcnmVmjqKio6SinrWidp9mZ4+ko6KjpaK5pql6IE5QO1ZYWVhYPl9gYVIhTj5TV1paWT5iYGVSUSA8T1VXWlk/YGNjPT4/EkNKUFhkeYWHiFhYVEVGgoaLjLKYmZteXFhLjEqFiYuum5ybXV9aVI6MTIiKqpibml5dXl2SkY1MiKeVmJtfW11plpORkE2ikpSXQUFCf7y4tbKsUqSqrWRkZo6ko6CenK9zm51naWmPoqSjoqGypHaeaGpqj6KkpqSkt6apeiBQTk87WFZVWTxeYGBTIU1OPFZaWVc/YmJlUVEhTD5UVllYP2NiYlJPTh8+UVNVWEBgY2M8Pj4/EkdQV2B5h4aIXFtXVkxJhIaNqpmamV1cWFhSjEmEiamXmplcXF1aWpGNTIeklJeaW11dXWaUkI9MopGUmUBCQkN/trWwrFGjqKtmZGRmjqOhnZmtc5qeZmhpZ5Cjo6CctKJ2nWdqaGmPoqGkorWop3okVFJRVD5bWVlCYWFkViNRUVJAXFxdQmVkZlhVI09QQFlaWkRkZWVWVFQlTUFWWFlGZWNkVVZRUCJAVVZZRmJlZUJDQkNAFlJXYnmJh4hgYF9cWFRLhYeqmJyZXl9gXVtejkuIp5aYm2BhXWFdaJKQTaOSl5pERkVHSX+yr6xUpaWoZ2poamqSoqCcsHacnWdqaWprkqWioLCldZ9obW1ra5KlpaOzqKd5KVZXVVVWQV5dQ2NlZlgoVVRVVEVcXEdlaGlaVyhSU1RDX1xGZmlpWVpXJ1FRRFtdR2dqaFdaVlQnTkRZW0lmaGhYWVhUUiJGV1pKaGtqRUZGSEVJGldieYeMi2NjY2BeXF1JhqSWmpxiYmFiX15njk2gkZabSEhKSkpNf66rV56lpGhsbWpqbpGhm6t5nJtrb25wb22TpKKto3qda29vbW5wlKajsKWlfC1ZWldXWFhFXUllZ2hdLFlXVlpZRmFKaWhsXFwrVlRYV0heSGdna15cWipVVVVGY0tpaGpcXVdYKlFURl1NaWlsXV5bWFYnUklcTmprbV5dXVpZVyVLXE5pbm5HS0pMSk1PHmN6h4mLZGRjZmRiYGZNnpOWmE1OTE1PUFF/qFudoKJrbm1ubnBvkJundZecbW9vcG9wdJKdqaN6m29yb3NzcnWVo66lo34tXFxbXFpcXkpJaWlsXjFcW1tZW15JTGpqbGBfL1dXW1xbSktqam9eYF0uU1laW05OaGxtXl5dWS5VV1dKTmlrbGBdXltaLFdYTVBqbG9fYF9fXVooWE9SbHFxYGBhYFxdWyVRU21ydkxLT05OUlFUI3mJiYpPTk9TU1NUV4Bdm5qcbnBvb3JxcnSQo3eWmW9wcnJxdHR5kqSffJlxcXRzcXZ3fJKmo6GAMIODhYKHhYaIo6upqowxgIB+g4eHiKanqKuKiDF9fX+ChoalqaqpioaEMnmAgIOJo6moqYeFg4ExfH1+hKOopqeOi4aFfzB9gYOiq6qojI6IhYKCMH+Cnamrq4+LjImIhYYvf5yora+PjY+OiYqJhi6ZqKysq66ura6rqKSigM/S2LOxsbGwsrK0tNrR09Wzs7Owr7Oztbbg3tDWs7S0sbKzs7i45ODhzzdiYWRhYmFhZE5QbW9pOmFjYGBjY2NTVnBzZ2k4X15gZGNjVFZwcmhoZTlgYGJhZFZWcnVmZ2dkOllfYmNYV3JxaGhnaGI5Xl9jV11xdGloZmdmZTVfYVtddXZpaWtmZ2VnNGFeX3h8aWlpaWhnZmYyYGV6fVJVWFtcWmFiZDCAh4lTWVtcXWBhZmmGZpiYdXl7eHp6e4CCj6GAmHZ6enp7eX5/g5Cjn4MxYF9fXV5dX11LYk1uZjVfXl5eYGFeT2ZScGVmNVxdXF9fX1BmVG9lZ2U2XF5cX15TZlZxZWVjYjZbXFxeU2lXbmZmZmNjM1tcXFdqW3JjZmRjY2I1XV1VaF50ZWVlZmNkYzJdXGlfd2RnZWdlZGRlLmBsY3pMUFNVV1paX2UteH+Ja21ubm1ubW9zfFWVjFBVV1paW2JkaIWdZpd0eHd4d3p7gIGPlJ+ALVpcWltcWltbSGFhSmMxXFtcW15bXEtjZk1jYjFaWllcXFpNZmVQY2FgM1ZaW1tbT2RlUF9iX10vWFpbWlFkZVJhYWFgXjBZWltTZmVYYmNiYV5eMltbWGZoW2NgY2FiYV8wXFhpZ19hYmJjX2JiYS1fZmxkSk5RUlRXW11jJ3Z2f2hra2trbWtsbnpUgJVpamprbG1vbnJ9hFWVTVFVVldZX2Rmhp2eYBRCREVIT1VdZmt5gYFES4yLiouRj5GSt52bRZRKh4eJjpCPkrOcnUeSkEqEiYmOj5G1nJ5MkoyPTIKIiI2StZmaUpWTkYtNg4iJj7Sbm1ialpOQjU2FiJCwmp1hmJmVkY6NT4eMrJqcbJmZmJWUko9Oi6yWm3Gem5uZmJeUkUyslJeAwMG/vr67trS2U7K1h6enp6SlpqKgn7t0o4imp6SkpaSnpKHDqnkdOlVVVVhZVlZUOl5fOxA/QkVJUllha3mBgVtCR4eFioyRkY+0mZlZRY9HgYeKjI6Os5qZWUiPi0mEiIeNjbSXmV1NkI6LSISGiYqyl5dZWJSRjotLhYuKrpmYW12WlZKQjUuGiq2ZmVxol5eTkI+NTIaqlpZYcJqbm5WTkY9OppKUP3+9vr29u7azsFKssWSIpaKhoKWfnpy2dZ5jiqako6GjpKGevah4H1A6VVRXWVhYVTtfX1IfPFNTV1hZV1Y/XmA7PRBARUtRWmJqeX+BWlhFRoOIiouQj7SYmllXRotGhIaLj5GympleWkuNjEiChYiMsZaZXV1Vko6LS4WHjLCYlltfXZaUjpBNhomsl5xcXWaZlZOQjk2IppSaWF1wmZuXkpKQTqSRlD5Cf7y9vbi1sq1Sq7BlZoekoaSin56btnScZWaIo6Wioqahnrmodh5PTTpVV1pYXFY7X2FTIE07VFhZV1pZP2JhU1EfPk9UVldbVz5gYDs/PhJFSU5ZYmx5gIJYWFVHR4KHi42RsJqZXVxYTIxHgIaIjbKZm1tdW1WQi0mDiIuumJpeXl1dk42LS4iKq5ibXV5eZ5aSko9OiKmWmFpeXHGZlZWRkE6jkZRAQUN/vLy4tbCtUqqvZGhmiaKio6KemrV1n2RmaYmjpKKloqC4qHYiUFBOOllYV1pWPV9fVSFOTD1XWVlYWz9jYlJQIEk+VFZZWFk/YGNST0wfPVFSWFlaQGJiPT4+QBJIUFdhbHl/gV1aV1VMR3+Gio2xmpleXVxZUotKhoiKrJiaXl1dWV2NjUuFiqiXml1dXFxnkI6OTImmlpdaXFxbcZWVkY1PopKUQUJCQ4C7trKvqlOmqmZnZGaHoaSfnZqzdZ9mZmdoiaSio6KeuKl4H1BPT1A6V1ZXVj1gX1QgTk5MO1hYWFY+YWNTUx9KTDxVWFdZQGFiU1FOHkc9UldYV0BjYVFRT0wfPk5UVlZCX2M8Pj8+QxNPVl9peX+BW11aV1dTSIKGi6qYlllbXFpXWYpJhIallJpeXF1dWWOPikqFo5KXWl1dXFxtkY+OTZ+RkkFCQkNEf7SurKhRpaZlZ2dnZIehnpyZsHacZWppZmaIoaGfnLGleCNUVFNRUz5ZWlhDY2JWJFNRT1E/WlhbQ2RnVlYlUFBSQVtcWkNnYllVUyRMTkFYW1lCZmNWVFRRI01CWFdaRmVlVVRTUk8iQVVXWklmZ0FARERFRBRXYGl5g4JcXWBbWldcSoOIpZeaX19eXltaZotLhaOUllxeX19eXW6QjU2ekpREREdHSUuAramnVaWlaGppaWhri5+cmK93mmlqbWpsaomioZ2upHooVlRVVFVUQV1ZQ2ZkWydUVFNUVUNcXUZnZ1hZJlNSUFRDXF1FZ2hYW1YnUVFURVxdSGRpV1lWVSZPUkdcW0dlZ1lZV1ZSJE1GWlxMampYWlpYVVIkSFldS2hrREhGR0lIShpha3mChWNhYmJfXl5kSoOflJZfYWJhYl9eb4tLmZCTSUlKSk1RUoCpoledomhsbGtrbXCIm5mmdptqcG9ucG5vjJ6craR7LFlZV1ZYWFlFXUhnZ14rWFhWV1hXRF9HaGldWypWVldZWEleSmlqXF1YKVNVVVZIXktoaltZWVcpUlVVSmBMaGhdW1xYVipTU0ddT2dpXlxcWlpWJ1RMXlBvbVxcXVtZWFckUGBRa3BHSktKTUtPUx5qeYGFYGJkY2ZjZGRvS5aMkUtMTU9QU1ZWf59bmJpqbm1tcHNyc4mVonqVcHFwbnBydHiMmKOffixcWVxbW1xZXkRIaWlfMFtaWFpcW1tKTGprYWAwW1lYXFpbTE5ra15fXi5YWVpaW0xQa2tfXVxbLVVZWV1RT2tsYGBeXFktWFlbTlRrbV9gYl9cWixaWlRUbm9fYGJgX11fKlxWVnB0XV9fYGBeXl8nWFx1eEdOTFBST1RYXCV5g4VJT1JSVVdYXWB/XZOTa29xcHFwdHh8iZp6kW5wc3JxcnZ8gIydm30vgoKEgYODhIaEoamoii+Bf32DhISGh6SpqYuFMnx6foGDg4WjqKiIhYUxent9gIWGoqqohoWAfjF4fYCChqKmp4uHhIJ/L3l7f4GlpaeJiYeEhH8xfH+DoamqiomLh4aEgjB/gZ6pqoyLi4iKhoWEL4GbqaqLjoqMjImGiogumaqrrK2trayuqqikooDU1rCxsLKvsLKzsrHgz9OysrCyr7Cxs7W149/PMV9eYmBeXV1fWklNbGU0XV1dX11dXl9QU29lYzRbXV9fYV9eUFFvY2JjNFtdXGBeXVJTcWRlYWE2W11gX2FWWHBkYmVjYzVaX15fV1lwY2RjY2NfM1xdXVdccGRlZWNkYmEyX2JdXndkY2ZkZGZkZTBjYWV6YWJjZGVjY2hpLGdqf01TVFVZWlpiZ2wrgIdPVFdZW1xhZGZuh2GJcnR3eHd3eX2CipCRfSpdW1paXVxaXVZHYElgMFpaWlpcWFtaS2NPYmAvWlpbW1tbWU1iUWFgXy9ZWllbWlxOZFBhYmBeMFhaWltaUGRUY2FgYl4vWltaXlRlVmJiYmJhYS5bWVpXaVhkYmViYl9fL1peWmlfYWJjY2JhYGItXl9rZV1hYWJhYmRjZipnc2pKTk9QVVlaXWVsKXh/ZmpoaWtqb3FzeH1Uh0tTU1VWWF5jZ3CGj2ESP0BFRk5UXGVqcnqBRUmKiomNj46PkZO2nkaSSoeIi4yPkZOUtpxGlI9KhIaKjI2Sk7WbS5CPiUuEhouLjpGzm1SWko6MTIOHi4+StZlYl5WRjYxNhIWLjbaaYZaWlZGRjE6EiI2zm2qZl5eUkI2NTYiKr5lwnJqYmZiUkpBMiq+WeJuam5mal5eVlE+wmX/DwsHAwL68t7i5VbeHp6anpKWjpaOhpMF2HTlVVFVaV1lXU1M6XTkPPkFESlBYYmlxeYBYQkWHh4iMjY6PkLaYWUSNRoOHho2QjY+0mVlFjotGhYOJi4+Qs5hdTJCOi0eCh4eNj7OYXFSTkY2NSoKHiou0l19dmJKSkIpLhYmKrpdbaJeXlJGNikuGiq6XVm+ZlpeVkJCPTIaqlVh3mZeYmJWTkZBOq5U8gMG/vb6+ubazs1KvYomjoqKkoaShnZ26dR5LOFVSWVdYV1RWPFxRHTpTUVZbWFhYWTxgOTwPQUNJTlhjanB5gFpWRESDhYiMj4+RtJxZV0aKRoKFiYyNkbWZWltKjYpJg4eKjZCzmFtbUpKNi0mChoqMsZpdXF6WkI2LS4WHiq+aXVtll5aRi41MhImrllhccZaWlpGQjUyEqJVYWniZm5iWk5KOT6iXPT6Av729vrm0srJTr2RmiKSjo6KmoJ6cungeTU05VFZXWFpVVDxeUiBJOlJXVFZZV1g9YFBQHjxPVFVXWFpXP2E8Pj0QQUlOWGNqcHmBWVdURkaAhoiNj4+ymltYV02MSIOGio2PsplbXFhTjYpJgoWKjbKZXVtbW5KNi0yGhousml1cXGeWkY2LToWJq5hXXF1wmJWPj41Ph6WUWF1bdpmYlpSSj02mlj5AQIC+vLu4trKyUa9jZ2WJoqKioqCdnbp1H05OTDlYV1ZZVlU9XlIgTko6VFdWWVlZPWFRTh9KO1VXWVhXV0BgT05MHjtSU1dZVVhBYjw9PT4RR09XYWtxeYFdXFdVS0iChoqOkLGbXV1bWVGJSIKFiouvmF5cXVpcj4lKhYaLrJlaXVtcZpGOikyHiaeXW11dXW+UkJCOUIWlk1teXl14m5eUj45QpJQ/QkJBf7q7trSvsFWsZ2dmZoekoaSgnZ22diBQT05PO1dWWVdWPWFUIE5NSzxVV1lZWT9jU1IgSkk8VVdYWFlBZFFQTh9IPVNVV1dXP2JQUU5NHz1RVVdZWEJiOz8+Pz8RTVZgaHF5gFtaWVdSUUZ/hIeLrJdbXVtaWVqKSIOHiqqYXVxcXlpjjYtJhYenllhcXFtcbZKPi0yFpJJaX1tdXniUkoyPT6OVP0FCQ0WAtrKwrKxTqWZpZ2doiKGhnp2cs3geT09PTU47VlhVVT1gUx9OTU1NO1VVVVc+YVVQH0xLTDpYWVdZQGJTUk4eR0o9VldWWEBiU1BQTh5IPVNUWFdBYVJTT09NHUFRUlVbR2I8Pj5AQUMQVF9ncHmAW1xdWldVWUmBhYijl1xaXFtZWGSISICFopRZW1tcXFpsi4tMhJ2QWVpdXFtedI+Ni02ekEFBQURESYCvqqanVKRlZ2dmZmiIoJ2Zmq93I1NSUVFRUD1aV1hAYlYjUVJQUlJAW1pbQWZWViJPUE9RQFdZWENkV1VUI05OUEBaWVlFZVRVUlEhSk5CWVpaRmZVVlRQUSJNR1dXW0lnVFZVU1BQIENUWVtNaD5BQUJER0YWXmdweYJdXl1eXFpZZEqAhKCSXF5dXV9dW22GSn+bkV1gYF1gYWB3jIdMm45DRkZHSU1QgKmio1WhaWtqamxrb4qcmJqseCdTVlRUU1NUQFpbRGZZJ1NUU1ZUVUBZXERnWlknU1FTU1VEW1tHZ1hWVyZQUVNUQ1lcR2ZZVldUJVFSU0VcXUlnWllYV1QlUVFIWV5NZ1haWFVTVSZQSFpgT2tXWFdZV1hUIk1cX1FuQ0VFR0dLS1EZaHF5g1tgYV5jX11ibUl9l41fYWFhYmNjZHaDTZmMSElLSUtPVVZ/n6FZmmtrbGttbnB0iZSWpHgmV1hYWFhYV1hBW0NmXStWV1ZXWFlXRmBJaFteLFhWVVdYWEdgSmhbXFsqU1dYWFdIYklpWlpbVylVU1hYS2BNZ11dXVtXK1NXV01iT2xcXlxaWVgrU1ZMYlVsW11cXFpZWSdYVGJWcVxcXF1aXVxcJFhlW3RDSUpNS09SVlsfcHqCYGNkZWVmZ2Zqdk6Rh0dMTU1QU1ldYH+ZWZJtb29ub29xdnuJj5t8JlVXV1VWV1ZXU0BCZVsrVlVWV1ZWWFdFSGhaXCtXU1ZWWVVVRkhoXFtaKlVTV1hXV0hIaFtaWVkrVFVWVlhLS2ldW1hZWClQV1hXT01qWlpbWFhVKlVYWE5Sa1tcXFtaWFkoWFlUVXBbW1pcWl1aXCRbWVt0WFtdW11aXFxgIV5ie0RJSUpMT1BZXWUfeIJGTE1NT1NYXF5mgFiEa29tbWxucHZ7g4iMeS+BgIB+gYOBhYSDoKeIMH58fH+BgoGDhKSnhoQueXx+f4CCg4ajqIaDgTB2fXuAgoODoaWFgoB9MHp7fYGEg6GkiYaDgH4went+gYKjpYaGhoN9fC54fX6CoqaJiYeFhIF+MHx8gqGqiomJiIaFf4EvfIGhqomKiYmJioWFgy9/maqLiouKiomIiYWFMJ6rqq2srqqsq6qmpqd/2LGwsq+vra+wsbK048wrWVpaWltYWFtXV0VJYS9XWFhcW1lcW1pLTmFhL1lXWFhZW1taTE5gYV0wWlpaW1tbWU5PX2BeXS9aV1paWltOUmJhX15gMVlYWlxdVFZhYGJiX2AvVlxeXldYYV9fYGBgXi5bXV9aXmJhYWFhYmJgLmBhYWJdX2BhYmBiZGYpZ2hqXGFjYGBjZWRqbix2eEhQUFBTVlteZW17J4BMUlFUVVhcYmhtfYZfEEFAQkZOU1tkanFyeUFLioqKjY+Pj5GUlbdFlEqIhYuMj46RlZK4RpKQSYKFh4qNkJGRtkuQjo1JhYSHipGQkrRQl5KQikqFhoiQkZC1WJiVkI+LTYKHjY+RtF+YlpKQjYxLgoiMjrNrlZaWlJKOh06FiY6xcJyZl5iXlJCOTImLsnecmpuZmpaVj5FNjbR4nZucmJmalpSSlE6zf8HCwL+/v768vLy9Vxs2VFRUVlVUV1NTVDs6Dj0+QUhPWGFpcXB5WD9FhoaIi4yMjI+RtVhCjkWDhoiKjYyPkbNYRY+KRoKGiYyQjY60WkuRjYxJgYWIjI+Qs1xUkpOOjEiChoiNkLJZXpWSkI2LSYSEiIuxWmWWlpGQjYtKhIiLr1dwmJWVkpCNjkuFh65ZdZmZmZWVj46PTYusWHaZmJiWmJSUkJBPrT6AwcC+vr69uba5uVQeTjlSU1ZYVVZVVFM9UBw5UlFVWFdYVlZXPTo8Dj9CSE5ZYWpxcHlYVUNEgYSKjY2Pj4+0VlREikaAhIaLjY6Qs1xZS42IR4CFiIuPj7JdXVOPjotIgYaJjY+zXFteko+Oi0iBhouMslxbZ5eSko2KS4SIjK1YWnCVl5KQkItLhYiqWFl3lpiWkpCPjE+IrFlcd5qZmJiVk5CSTa49Pn++v7q7vLi2t7hUHktLOVNYV1hZU1ZVOlEcSjpSVlpWWFhXVz1OTR07UFVUWlZYV1Y+OTs8D0NITVVhaXFxeVdVUkVEg4aIjI+Qj7FbWFdKikmBhomKkI+zW11ZUo2LSoOGiIyPsF1bW1uQi4pJgoWIi7BfW1polJCOi02FhoqtWlpbcJaUkoyMToWHqVtbXHaXmZWRkY1Nh6pYXVt2mZiZlZSRklCrPz9BgL+8vLq3tLe1VR5PTEo5V1lYV1VWWD5RHktJPFVXV1daWVg/UU8eSTlSVVZXV1dYQFBOSx06TlFUWFdXWEA6Ozw8EEdPVWBqb3J6XVpVVUtGg4SGi46QsV1bW1dUiUiChImOkq5bWVxZWY6LSYKEiIyvXFxcXGSQi4lLhYaJrFlcXF1wlJGMjk2EiKhbXFpcdpmTj4+OUIipW11cXXiXmZOSkJNQqkBBQEB/uru6t7GytlYfTU9MSzlUVVhVVVQ+VR5OTE06WFhXVVhZQFJRH0tLPFZYWFZYWUBSUU0eSDpSVFhXWlZBTlFNSx48UlJXWFhbQzs9PEA/EE5UXWlxcHlaXFpWVVFHgYSIi46uWVtcWlZaiUmCg4aNrFtcXFxZY42GTIOGiqlaXF1bXW2PjYlMhoWmWl5dW1t3lZGNjU+Ip1pbXF1bd5eUkZCRUqdAQUVDRX+1trStr7BUIE9PTU5OOFZZVVZVPFQeTU1NTDpUVVdZWD1TUR5NSU08V1ZYWFpAUlJRHklKPFVZV1dZQFNRTk4eSD9VVlhXWkNSUVFOSx5AUFJXWVlEOz4+QEBCEVVeZm9xeVtaW1lZVFhGfoKHi6hcW1pbWFhjhEmChImlWFpcWV5aa4qITIGEoFtcXV1dXnaQi4lOhqFcXl1dXl53kI+Oj1CjQEFEQ0RKgLOwq6mtVB5OTE9NTU04VlRUVjxRH0xMTk9OO1VWVlo/UFIdTUxNTjtUU1ZVPlFPUB9LS0w9VldYWENQUE9OHklKP1ZXVldDUlBST0wdSkBSVFdaRlBSUVBOTB1DU1VYXEg7PD0+QUNGEV1lbG96WltZXFhXVmBHfH+En1haWltbWllqg0eAf5tYW1laXF5dc4eDTIKcWltZXVteX3WLiYlPnUFCQ0VFSUx/qaSjp1QjTlNSUVBPUTtTWVdAVyNRUFFQUU8+WVlaQlZVIk1PT09QPlhYV0VTVVIhT1BQUEBZWVlEVVJRUSFMTk9CWVpbRlVTU1NRIk1OQ1ldXElVVlVVUVIiTUhXW15LU1NUVVJRUR9LWV1dUj9AQUJER0tKFmducHhaXV1bXVxcXG1HfH6ZW15eXV1gXmFzf0p9mFxeX19fYWJjdoSETpdDRkdISEtPVn+hoKFVI1VXVVJUUlRUPVpaQVcnVFVTVFVSUkJcXUdYWCdUUlJUU1RDXFxHWFpXJ1FSUVVWRVxfR1ZWVlYmT1FUUkZcXElYVldWVyZTU1RIX19MWVlXWFVVJVBSTF5iUVdZWFhXVlYnVU9hY1VZWVZZWVhYVyRWYmZaPkVGSEpMT1FZG29weV5hYV9hY2JjZ3NKdY9eYmFiYmJmZ2t2fE2SQ0lJS05SVFtegJmZWCFVVFNTUlNSU009Wj5XJVRVUlFVU1RTQFtCWVgkUVFUVVdUVEJaRFRVVSZQUFVTU1VEXEVZV1dUJVJTVFNWSF5KWFdVU1UlU1NUVEleS1hZVllXVyVSU1NMYlBZWldXWFdVJVRVT2FWV1ZXWVlXWVgiVlhlW1RWWVlXV1paXB9ca2I8QkZHR05RUlxiHG95W2JjYmJjZWVpcHdLgkNGSEhNUFZcX2aAiFggU1NQUlRSUFNPUDw+ViVSUlJUVFJSUlNBQlRXJlBST1JSU1BTQ0ZVVlYkT1JRU1VUUkNFVlZWUyRQUVJTVFVGR1hXVlRUJVFSU1RVSUtXVlVUVlckTlNWVk1QVVZXVVdWUyNTVldPVVVXVlZXWFhYI1laWVhSVlZWWFhaXF4eYGBhVVdXV1ZaW1tgZCBucD5FRUVJTFBTW2RzHHlCRkdKSU9SWF5md4BVLn9/fn2DfoCAgYGBoIYve3t7fIB/gYCBhKKGhC56eXx+foB/goGfhYKBL3V5eHyAgYCBn4SBgHwwdXt8fYCBgp+IhYN+fC93ent+g4KhhoWDgH58L3Z7fICDoIWEhoOAgXsteHl+gaGHh4aGhYCAfS97f4GfhYeFhYWGg4F/MHx/n4aHiYmHh4WEgYIwgp6JioeKiYeIh4eDhjOgqKurqqmrq6uqp6eqfw=="};
+const GTO = (function(){
+  const labels = GTO_DATA.labels;
+  const idx = {}; labels.forEach((l,i)=> idx[l]=i);
+  const combos = GTO_DATA.combos;
+  const bin = atob(GTO_DATA.matrix);
+  const n = labels.length;
+  const MX = new Float32Array(n*n);
+  for(let i=0;i<n*n;i++) MX[i] = bin.charCodeAt(i)/255;
+  const cache = {};
+  function decode(hex){
+    if(cache[hex]) return cache[hex];
+    let bits = '';
+    for(const ch of hex) bits += parseInt(ch,16).toString(2).padStart(4,'0');
+    const arr = new Uint8Array(n);
+    for(let i=0;i<n;i++) arr[i] = bits[i]==='1' ? 1 : 0;
+    cache[hex] = arr; return arr;
+  }
+  function pctOf(arr){
+    let s=0; for(let i=0;i<n;i++) if(arr[i]) s+=combos[i];
+    return s/1326;
+  }
+  function eqVsRandom(label){
+    const i = idx[label]; let s=0;
+    for(let j=0;j<n;j++) s += MX[i*n+j]*combos[j];
+    return s/1326;
+  }
+  function eqVsRange(label, arr){
+    const i = idx[label]; let s=0, w=0;
+    for(let j=0;j<n;j++) if(arr[j]){ s += MX[i*n+j]*combos[j]; w += combos[j]; }
+    return w>0 ? s/w : null;
+  }
+  function nashKey(tableSize, bb){ return tableSize+'_'+(bb<=15?10:20); }
+  function pushRange(tableSize, bb, pos){
+    const k = GTO_DATA.nash[nashKey(tableSize,bb)];
+    return (k && k.push[pos]) ? decode(k.push[pos]) : null;
+  }
+  function callRange(tableSize, bb, hero, opener){
+    const k = GTO_DATA.nash[nashKey(tableSize,bb)];
+    return (k && k.call[hero+'v'+opener]) ? decode(k.call[hero+'v'+opener]) : null;
+  }
+  /* ICM近似: Nashレンジをエクイティ順で下から削って目標%まで絞る */
+  function tighten(arr, factor){
+    if(factor>=0.999) return arr;
+    const inHands = [];
+    for(let i=0;i<n;i++) if(arr[i]) inHands.push(i);
+    inHands.sort((a,b)=> eqVsRandom(labels[b]) - eqVsRandom(labels[a]));
+    const target = pctOf(arr)*factor*1326;
+    const out = new Uint8Array(n); let acc=0;
+    for(const i of inHands){ if(acc+combos[i] > target && acc>0) break; out[i]=1; acc+=combos[i]; }
+    return out;
+  }
+  return { labels, idx, combos, decode, pctOf, eqVsRandom, eqVsRange, pushRange, callRange, tighten };
+})();
+
+/* ================= Core hand model (Chen score) ================= */
+const RANKS = ['A','K','Q','J','T','9','8','7','6','5','4','3','2'];
+const RANK_VAL = {A:14,K:13,Q:12,J:11,T:10,9:9,8:8,7:7,6:6,5:5,4:4,3:3,2:2};
+const SUITS = [ {sym:'♠', color:'black', key:'s'}, {sym:'♥', color:'red', key:'h'}, {sym:'♦', color:'red', key:'d'}, {sym:'♣', color:'black', key:'c'} ];
+
+function chenPoint(v){ if(v>=10) return {14:10,13:8,12:7,11:6,10:5}[v]; return v/2; }
+function chenScore(hi, lo, suited, pair){
+  if(pair){ let s = chenPoint(hi)*2; return Math.max(s,5); }
+  let s = chenPoint(hi);
+  if(suited) s += 2;
+  const gap = hi - lo - 1;
+  let penalty = 0;
+  if(gap===1) penalty=1; else if(gap===2) penalty=2; else if(gap===3) penalty=4; else if(gap>=4) penalty=5;
+  s -= penalty;
+  if(gap<=1 && hi<=12) s += 1;
+  return Math.ceil(s*2)/2;
+}
+function buildHands(){
+  const hands = [];
+  for(let i=0;i<13;i++) for(let j=0;j<13;j++){
+    const hiIdx=Math.min(i,j), loIdx=Math.max(i,j);
+    const hiRank=RANKS[hiIdx], loRank=RANKS[loIdx];
+    const hiVal=RANK_VAL[hiRank], loVal=RANK_VAL[loRank];
+    let notation, suited, pair, combos;
+    if(i===j){ notation=hiRank+hiRank; suited=false; pair=true; combos=6; }
+    else if(i<j){ notation=hiRank+loRank+'s'; suited=true; pair=false; combos=4; }
+    else { notation=hiRank+loRank+'o'; suited=false; pair=false; combos=12; }
+    hands.push({ row:i, col:j, notation, suited, pair, combos, hi:hiVal, lo:loVal, score: chenScore(hiVal, loVal, suited, pair) });
+  }
+  return hands;
+}
+const ALL_CELLS = buildHands();
+(function rankHands(){
+  const sorted = ALL_CELLS.slice().sort((a,b)=> b.score - a.score || b.combos - a.combos);
+  const total = 1326; let cum = 0;
+  sorted.forEach(h=>{ cum += h.combos; h.percentile = cum/total; });
+})();
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+function cellByNotation(n){ return ALL_CELLS.find(c=>c.notation===n); }
+
+/* ================= Position sets ================= */
+const LABELS = {UTG:'UTG',UTG1:'UTG+1',UTG2:'UTG+2',MP:'MP',HJ:'HJ',CO:'CO',BTN:'BTN',SB:'SB',BB:'BB'};
+const POSITION_SETS = {
+  6: { order:['UTG','MP','CO','BTN','SB','BB'], openOrder:['UTG','MP','CO','BTN','SB'],
+       openBase:{UTG:.13,MP:.17,CO:.22,BTN:.40,SB:.30}, shoveBase:{UTG:.28,MP:.35,CO:.48,BTN:.68,SB:.90} },
+  8: { order:['UTG','UTG1','MP','HJ','CO','BTN','SB','BB'], openOrder:['UTG','UTG1','MP','HJ','CO','BTN','SB'],
+       openBase:{UTG:.10,UTG1:.12,MP:.15,HJ:.18,CO:.23,BTN:.40,SB:.30}, shoveBase:{UTG:.20,UTG1:.23,MP:.28,HJ:.33,CO:.42,BTN:.62,SB:.85} },
+  9: { order:['UTG','UTG1','UTG2','MP','HJ','CO','BTN','SB','BB'], openOrder:['UTG','UTG1','UTG2','MP','HJ','CO','BTN','SB'],
+       openBase:{UTG:.09,UTG1:.10,UTG2:.12,MP:.15,HJ:.18,CO:.23,BTN:.40,SB:.30}, shoveBase:{UTG:.17,UTG1:.19,UTG2:.22,MP:.27,HJ:.32,CO:.40,BTN:.60,SB:.82} }
+};
+
+/* ================= Global settings ================= */
+const settings = { gameType:'cash', mttStage:'early', bb:100, tableSize:6, scenarioFilter:'all' };
+function isPushFold(s=settings){ return s.bb <= 20; }
+function stackMultOpen(bb){ return clamp(1 + (bb-100)*0.0012, 0.75, 1.2); }
+function scaleFactorShort(bb){ return clamp(1 - (bb-10)/25, 0.4, 1); }
+function icmOpenFactor(s=settings){ if(s.gameType!=='mtt') return 1; return {early:1, bubble:0.93, final:0.85}[s.mttStage]; }
+function icmAggFactor(s=settings){ if(s.gameType!=='mtt') return 1; return {early:1, bubble:0.75, final:0.6}[s.mttStage]; }
+
+function openPct(posKey, s=settings){
+  const sp = openSpec(posKey, s);
+  return sp.pct;
+}
+/* openSpec: {source:'nash'|'model', pct, bits|null} */
+function openSpec(posKey, s=settings){
+  if(isPushFold(s)){
+    let bits = GTO.pushRange(s.tableSize, s.bb, posKey);
+    if(bits){
+      const f = icmOpenFactor(s);
+      if(f < 0.999) bits = GTO.tighten(bits, f);
+      return { source: (f<0.999 ? 'nash-icm' : 'nash'), pct: GTO.pctOf(bits), bits };
+    }
+    const ps = POSITION_SETS[s.tableSize];
+    return { source:'model', pct: clamp(ps.shoveBase[posKey]*scaleFactorShort(s.bb)*icmOpenFactor(s),0.03,0.97), bits:null };
+  }
+  const ps = POSITION_SETS[s.tableSize];
+  return { source:'model', pct: clamp(ps.openBase[posKey]*stackMultOpen(s.bb)*icmOpenFactor(s),0.03,0.6), bits:null };
+}
+function inOpenRange(cell, posKey, s=settings){
+  const sp = openSpec(posKey, s);
+  if(sp.bits) return sp.bits[GTO.idx[cell.notation]] === 1;
+  return cell.percentile <= sp.pct;
+}
+function callSpec(heroPos, openerPos, s=settings){
+  if(isPushFold(s)){
+    let bits = GTO.callRange(s.tableSize, s.bb, heroPos, openerPos);
+    if(bits){
+      const f = icmAggFactor(s);
+      if(f < 0.999) bits = GTO.tighten(bits, f);
+      return { source:(f<0.999?'nash-icm':'nash'), pct: GTO.pctOf(bits), bits };
+    }
+  }
+  return null;
+}
+function threeBetThresholds(heroPos, openerPos, s=settings){
+  const ps = POSITION_SETS[s.tableSize];
+  const order = ps.order;
+  const heroIdx = order.indexOf(heroPos), openerIdx = order.indexOf(openerPos);
+  const openerStrength = openPct(openerPos, s);
+  if(isPushFold(s)){
+    const cs = callSpec(heroPos, openerPos, s);
+    if(cs) return { mode:'pushfold', shove: cs.pct, bits: cs.bits, source: cs.source };
+    const base = clamp(0.06 + openerStrength*0.3, 0.04, 0.5);
+    const sf = scaleFactorShort(s.bb);
+    const heroLate = 1 + 0.12*(heroIdx-openerIdx);
+    return { mode:'pushfold', shove: clamp(base*sf*heroLate*icmAggFactor(s), 0.02, 0.9), bits:null, source:'model' };
+  }
+  const heroLate = clamp(1 + 0.15*(heroIdx-openerIdx), 0.8, 2.0);
+  let threeBet = clamp(0.08*(openerStrength/0.22)*heroLate, 0.02, 0.28) * stackMultOpen(s.bb) * icmAggFactor(s);
+  let callAdd = clamp(0.10*(openerStrength/0.22), 0.03, 0.20) * stackMultOpen(s.bb) * icmAggFactor(s);
+  const call = clamp(threeBet+callAdd, threeBet+0.01, 0.55);
+  return { mode:'normal', threeBet, call };
+}
+function actionLabel(a){ return {raise:'レイズ', fold:'フォールド', allin:'オールイン', '3bet':'3ベット', call:'コール', bet:'ベット', check:'チェック'}[a]; }
+
+/* ================= History / review log ================= */
+let quizHistory = []; // {id, ts, module, scenario, pos, opener, handNotation, userAction, correctAction, isCorrect}
+let reviewQueue = [];
+let histIdCounter = 1;
+const HISTORY_LIMIT = 300;
+
+function pushHistory(rec){
+  rec.id = histIdCounter++;
+  rec.ts = new Date();
+  quizHistory.unshift(rec);
+  if(quizHistory.length>HISTORY_LIMIT) quizHistory.length = HISTORY_LIMIT;
+}
+
+function currentSpec(){
+  if(currentScenario==='open') return openSpec(currentPos);
+  const th = threeBetThresholds(currentPos, currentOpener);
+  return th.mode==='pushfold' ? {source: th.source||'model', pct: th.shove, bits: th.bits}
+                              : {source:'model', pct: th.threeBet, bits:null};
+}
+function srcBadgeHtml(source){
+  if(source==='nash') return '<span class="src-badge gto">GTO厳密解</span>';
+  if(source==='nash-icm') return '<span class="src-badge icm">Nash+ICM近似</span>';
+  return '<span class="src-badge model">簡易モデル</span>';
+}
+
+/* ================= Preflop quiz state ================= */
+let currentHand=null, currentPos=null, currentOpener=null, currentScenario='open';
+let score=0, total=0, streak=0, answered=false, inReviewMode=false;
+
+function weightedRandomCell(){
+  const totalCombos = ALL_CELLS.reduce((s,c)=>s+c.combos,0);
+  let r = Math.random()*totalCombos;
+  for(const c of ALL_CELLS){ r -= c.combos; if(r<=0) return c; }
+  return ALL_CELLS[0];
+}
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
+function randomSuitPair(cell){
+  if(cell.pair){ const s=shuffle(SUITS.slice()).slice(0,2); return [{rank:RANKS[cell.row], suit:s[0]},{rank:RANKS[cell.row], suit:s[1]}]; }
+  const hiRank = cell.row < cell.col ? RANKS[cell.row] : RANKS[cell.col];
+  const loRank = cell.row < cell.col ? RANKS[cell.col] : RANKS[cell.row];
+  if(cell.suited){ const s=SUITS[Math.floor(Math.random()*4)]; return [{rank:hiRank, suit:s},{rank:loRank, suit:s}]; }
+  let s1=SUITS[Math.floor(Math.random()*4)], s2; do{ s2=SUITS[Math.floor(Math.random()*4)]; }while(s2.sym===s1.sym);
+  return [{rank:hiRank, suit:s1},{rank:loRank, suit:s2}];
+}
+function cardHtml(c, small){
+  return `<div class="pcard ${small?'small':''} ${c.suit.color==='red'?'red':''}">
+    <div class="top"><div class="rank">${c.rank}</div><div class="suit-top">${c.suit.sym}</div></div>
+    <div class="suit-mid">${c.suit.sym}</div>
+    <div class="bottom"><div class="rank">${c.rank}</div><div class="suit-top">${c.suit.sym}</div></div>
+  </div>`;
+}
+function renderCards(cards, elId, small){
+  document.getElementById(elId).innerHTML = cards.map(c=>cardHtml(c, small)).join('');
+}
+
+function pickScenarioType(){
+  if(settings.scenarioFilter!=='all') return settings.scenarioFilter==='3bet' ? '3bet' : 'open';
+  return Math.random()<0.5 ? 'open' : '3bet';
+}
+
+function newQuestion(){
+  answered = false;
+  const ps = POSITION_SETS[settings.tableSize];
+
+  if(reviewQueue.length>0){
+    const rec = reviewQueue.shift();
+    currentHand = cellByNotation(rec.handNotation) || weightedRandomCell();
+    currentScenario = rec.scenario;
+    currentPos = rec.pos;
+    currentOpener = rec.opener;
+    inReviewMode = true;
+  } else {
+    inReviewMode = false;
+    currentHand = weightedRandomCell();
+    currentScenario = pickScenarioType();
+    if(currentScenario==='open'){
+      currentPos = ps.openOrder[Math.floor(Math.random()*ps.openOrder.length)];
+      currentOpener = null;
+    } else {
+      const openerPos = ps.openOrder[Math.floor(Math.random()*ps.openOrder.length)];
+      const openerGlobalIdx = ps.order.indexOf(openerPos);
+      const heroCandidates = ps.order.filter((p,idx)=> idx>openerGlobalIdx);
+      currentPos = heroCandidates[Math.floor(Math.random()*heroCandidates.length)];
+      currentOpener = openerPos;
+    }
+  }
+
+  renderCards(randomSuitPair(currentHand), 'cardsWrap', false);
+  renderPositionLine();
+  renderQuestionText();
+  renderActionButtons();
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('btnNext').className = 'next-btn';
+}
+
+function renderPositionLine(){
+  const el = document.getElementById('positionLine');
+  const pf = isPushFold();
+  const reviewTag = (inReviewMode ? `<span class="review-badge">復習</span>` : '') + srcBadgeHtml(currentSpec().source);
+  if(currentScenario==='open'){
+    el.innerHTML = `${reviewTag}${pf?'プッシュ/フォールド判定':'オープンレイズ判定'} &nbsp;·&nbsp; ポジション: <span class="pos-badge">${LABELS[currentPos]}</span>`;
+  } else {
+    el.innerHTML = `${reviewTag}${pf?'オールイン判定':'3ベット判定'} &nbsp;·&nbsp; オープン: <span class="pos-badge opener">${LABELS[currentOpener]}</span> → あなた: <span class="pos-badge">${LABELS[currentPos]}</span>`;
+  }
+}
+function renderQuestionText(){
+  const el = document.getElementById('questionText');
+  const pf = isPushFold();
+  if(currentScenario==='open'){
+    el.innerHTML = `フォールドされて自分の番。<b>${LABELS[currentPos]}</b> からこのハンドを<br>${pf?'<b>オールイン</b>しますか?':'<b>オープンレイズ</b>しますか?'}`;
+  } else {
+    el.innerHTML = `<b>${LABELS[currentOpener]}</b> が${pf?'オールイン':'オープンレイズ'}。<b>${LABELS[currentPos]}</b> のあなたはどうしますか?`;
+  }
+}
+function renderActionButtons(){
+  const wrap = document.getElementById('actionsWrap');
+  wrap.innerHTML = '';
+  const pf = isPushFold();
+  let buttons;
+  if(currentScenario==='open'){
+    buttons = pf ? [{key:'allin',label:'オールイン',cls:'allin'},{key:'fold',label:'フォールド',cls:'fold'}]
+                 : [{key:'raise',label:'レイズ',cls:'raise'},{key:'fold',label:'フォールド',cls:'fold'}];
+  } else {
+    buttons = pf ? [{key:'allin',label:'オールイン',cls:'allin'},{key:'fold',label:'フォールド',cls:'fold'}]
+                 : [{key:'3bet',label:'3ベット',cls:'threebet'},{key:'call',label:'コール',cls:'call'},{key:'fold',label:'フォールド',cls:'fold'}];
+  }
+  wrap.className = 'actions' + (buttons.length===3 ? ' three' : '');
+  buttons.forEach(b=>{
+    const btn = document.createElement('button');
+    btn.className = 'chip-btn ' + b.cls; btn.textContent = b.label;
+    btn.addEventListener('click', ()=>submitAnswer(b.key));
+    wrap.appendChild(btn);
+  });
+}
+function correctActionFor(){
+  if(currentScenario==='open'){
+    return inOpenRange(currentHand, currentPos) ? (isPushFold()?'allin':'raise') : 'fold';
+  }
+  const th = threeBetThresholds(currentPos, currentOpener);
+  if(th.mode==='pushfold'){
+    if(th.bits) return th.bits[GTO.idx[currentHand.notation]]===1 ? 'allin' : 'fold';
+    return currentHand.percentile <= th.shove ? 'allin' : 'fold';
+  }
+  if(currentHand.percentile <= th.threeBet) return '3bet';
+  if(currentHand.percentile <= th.call) return 'call';
+  return 'fold';
+}
+function submitAnswer(userAction){
+  if(answered) return;
+  answered = true; total++;
+  const correct = correctActionFor();
+  const isCorrect = userAction===correct;
+  if(isCorrect){ score++; streak++; } else { streak=0; }
+
+  document.getElementById('statScore').textContent = `${score}/${total}`;
+  document.getElementById('statStreak').textContent = streak;
+
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback show ' + (isCorrect?'correct':'wrong');
+  document.getElementById('fbTitle').textContent = isCorrect ? '正解!' : '不正解';
+  let posText = currentScenario==='open'
+    ? `${currentHand.notation} は ${LABELS[currentPos]} からは${actionLabel(correct)}が目安です。`
+    : `${currentHand.notation} は ${LABELS[currentOpener]}のオープンに対して ${LABELS[currentPos]} からは${actionLabel(correct)}が目安です。`;
+  const spec = currentSpec();
+  let extra = `<div class="eq-line">レンジ幅 ${(spec.pct*100).toFixed(1)}% ・ ランダムハンドに対するエクイティ ${(GTO.eqVsRandom(currentHand.notation)*100).toFixed(1)}%`;
+  if(spec.bits){
+    const e = GTO.eqVsRange(currentHand.notation, spec.bits);
+    if(e!==null) extra += `<br>このレンジに対するエクイティ ${(e*100).toFixed(1)}%`;
+  }
+  extra += '</div>';
+  document.getElementById('fbBody').innerHTML = escapeHtml(posText) + extra;
+
+  document.querySelectorAll('#actionsWrap .chip-btn').forEach(b=>b.disabled=true);
+  document.getElementById('btnNext').className = 'next-btn show';
+
+  pushHistory({ module:'preflop', scenario:currentScenario, pos:currentPos, opener:currentOpener, handNotation:currentHand.notation, userAction, correctAction:correct, isCorrect });
+  renderReviewTab();
+  saveAll();
+}
+document.getElementById('btnNext').addEventListener('click', newQuestion);
+
+/* ================= Tabs ================= */
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    const which = tab.dataset.tab;
+    ['quiz','postflop','review','myhands','chart','settings'].forEach(v=>{
+      document.getElementById(v+'View').style.display = (v===which) ? '' : 'none';
+    });
+    if(which==='chart') renderGrid();
+    if(which==='review') renderReviewTab();
+  });
+});
+
+/* ================= Chart view (open / 3bet) ================= */
+let chartMode='open', chartPos='BTN', chartOpener='UTG', chartHero='BTN';
+function renderChartModeTabs(){
+  const wrap = document.getElementById('chartModeTabs'); const pf = isPushFold();
+  const modes = [{key:'open', label: pf?'オープン(オールイン)':'オープンレンジ'}, {key:'3bet', label: pf?'3ベット(オールイン)':'3ベットレンジ'}];
+  wrap.innerHTML = '';
+  modes.forEach(m=>{
+    const el = document.createElement('div');
+    el.className = 'subtab' + (chartMode===m.key ? ' active':'');
+    el.textContent = m.label;
+    el.addEventListener('click', ()=>{ chartMode=m.key; renderChartModeTabs(); syncChartControlsVisibility(); renderGrid(); });
+    wrap.appendChild(el);
+  });
+}
+function syncChartControlsVisibility(){
+  document.getElementById('openChartControls').style.display = chartMode==='open' ? '' : 'none';
+  document.getElementById('threeBetChartControls').style.display = chartMode==='3bet' ? '' : 'none';
+}
+function renderPosChips(){
+  const ps = POSITION_SETS[settings.tableSize];
+  if(!ps.openOrder.includes(chartPos)) chartPos = ps.openOrder[ps.openOrder.length-1];
+  const wrap = document.getElementById('posChips'); wrap.innerHTML='';
+  ps.openOrder.forEach(p=>{
+    const el = document.createElement('div');
+    el.className = 'pos-chip' + (p===chartPos ? ' active':'');
+    el.textContent = LABELS[p];
+    el.addEventListener('click', ()=>{ chartPos=p; renderPosChips(); renderGrid(); });
+    wrap.appendChild(el);
+  });
+}
+function renderPickers(){
+  const ps = POSITION_SETS[settings.tableSize];
+  const openerSel = document.getElementById('openerPicker'), heroSel = document.getElementById('heroPicker');
+  if(!ps.openOrder.includes(chartOpener)) chartOpener = ps.openOrder[0];
+  openerSel.innerHTML = '';
+  ps.openOrder.forEach(p=>{ const o=document.createElement('option'); o.value=p; o.textContent='オープン: '+LABELS[p]; if(p===chartOpener) o.selected=true; openerSel.appendChild(o); });
+  const openerGlobalIdx = ps.order.indexOf(chartOpener);
+  const heroCandidates = ps.order.filter((p,idx)=> idx>openerGlobalIdx);
+  if(!heroCandidates.includes(chartHero)) chartHero = heroCandidates[heroCandidates.length-1];
+  heroSel.innerHTML = '';
+  heroCandidates.forEach(p=>{ const o=document.createElement('option'); o.value=p; o.textContent='あなた: '+LABELS[p]; if(p===chartHero) o.selected=true; heroSel.appendChild(o); });
+  openerSel.onchange = ()=>{ chartOpener=openerSel.value; renderPickers(); renderGrid(); };
+  heroSel.onchange = ()=>{ chartHero=heroSel.value; renderGrid(); };
+}
+function renderGrid(){
+  const pf = isPushFold(); const grid = document.getElementById('grid13');
+  const note = document.getElementById('chartNote'), legend = document.getElementById('chartLegend');
+  grid.innerHTML = '';
+  if(chartMode==='open'){
+    const pct = openPct(chartPos);
+    const sp = openSpec(chartPos);
+    note.innerHTML = srcBadgeHtml(sp.source) + ` ${LABELS[chartPos]} の${pf?'オールイン':'オープンレイズ'}レンジ(${(sp.pct*100).toFixed(1)}%)。` +
+      (sp.source==='model' ? ' 深いスタックのオープンレンジはポストフロップを解かないと均衡が定まらないため、プレイアビリティを加味した近似モデルです。' : ' チップEVのNash均衡を反復計算した厳密解です。');
+    legend.innerHTML = `<span><i class="swatch" style="background:var(--gold);"></i>${pf?'オールイン':'レイズ'}推奨</span><span><i class="swatch" style="background:rgba(255,255,255,0.05); border:1px solid var(--line);"></i>フォールド</span>`;
+    for(let i=0;i<13;i++) for(let j=0;j<13;j++){
+      const cell = ALL_CELLS.find(c=>c.row===i&&c.col===j);
+      const div = document.createElement('div');
+      div.className = 'cell' + (inOpenRange(cell, chartPos)?' in-range':'') + (cell.pair?' pair':'');
+      div.textContent = cell.notation; grid.appendChild(div);
+    }
+  } else {
+    const th = threeBetThresholds(chartHero, chartOpener);
+    if(th.mode==='pushfold'){
+      note.innerHTML = srcBadgeHtml(th.source||'model') + ` ${LABELS[chartOpener]}のオールインに対する ${LABELS[chartHero]} のコールレンジ(${(th.shove*100).toFixed(1)}%)。`;
+      legend.innerHTML = `<span><i class="swatch" style="background:var(--gold);"></i>オールイン推奨</span><span><i class="swatch" style="background:rgba(255,255,255,0.05); border:1px solid var(--line);"></i>フォールド</span>`;
+      for(let i=0;i<13;i++) for(let j=0;j<13;j++){
+        const cell = ALL_CELLS.find(c=>c.row===i&&c.col===j);
+        const div = document.createElement('div');
+        const inSh = th.bits ? th.bits[GTO.idx[cell.notation]]===1 : cell.percentile<=th.shove;
+        div.className = 'cell' + (inSh?' in-range':'') + (cell.pair?' pair':'');
+        div.textContent = cell.notation; grid.appendChild(div);
+      }
+    } else {
+      note.textContent = `${LABELS[chartOpener]}のオープンに対して ${LABELS[chartHero]} の3ベット/コール推奨レンジ(3ベット上位約${Math.round(th.threeBet*100)}%、コールは約${Math.round(th.threeBet*100)}〜${Math.round(th.call*100)}%)。`;
+      legend.innerHTML = `<span><i class="swatch" style="background:var(--gold);"></i>3ベット推奨</span><span><i class="swatch" style="background:var(--teal);"></i>コール推奨</span><span><i class="swatch" style="background:rgba(255,255,255,0.05); border:1px solid var(--line);"></i>フォールド</span>`;
+      for(let i=0;i<13;i++) for(let j=0;j<13;j++){
+        const cell = ALL_CELLS.find(c=>c.row===i&&c.col===j);
+        const div = document.createElement('div'); let cls='cell';
+        if(cell.percentile<=th.threeBet) cls += ' in-range' + (cell.pair?' pair':'');
+        else if(cell.percentile<=th.call) cls += ' call-range';
+        div.className = cls; div.textContent = cell.notation; grid.appendChild(div);
+      }
+    }
+  }
+}
+
+/* ================= Settings view ================= */
+function renderSettings(){
+  const gtWrap = document.getElementById('gameTypeRow'); gtWrap.innerHTML='';
+  [{key:'cash',label:'キャッシュゲーム'},{key:'mtt',label:'MTT(トーナメント)'}].forEach(g=>{
+    const el = document.createElement('div');
+    el.className = 'set-chip' + (settings.gameType===g.key?' active':'');
+    el.textContent = g.label;
+    el.addEventListener('click', ()=>{ settings.gameType=g.key; renderSettings(); updateSummary(); newQuestion(); renderGrid(); });
+    gtWrap.appendChild(el);
+  });
+  document.getElementById('mttStageBlock').style.display = settings.gameType==='mtt' ? '' : 'none';
+
+  const stageWrap = document.getElementById('mttStageRow'); stageWrap.innerHTML='';
+  [{key:'early',label:'序盤'},{key:'bubble',label:'バブル期'},{key:'final',label:'最終テーブル'}].forEach(s=>{
+    const el = document.createElement('div');
+    el.className = 'set-chip' + (settings.mttStage===s.key?' active':'');
+    el.textContent = s.label;
+    el.addEventListener('click', ()=>{ settings.mttStage=s.key; renderSettings(); updateSummary(); newQuestion(); renderGrid(); });
+    stageWrap.appendChild(el);
+  });
+
+  const bbSelect = document.getElementById('bbSelect'); bbSelect.innerHTML='';
+  for(let bb=10; bb<=150; bb+=10){ const o=document.createElement('option'); o.value=bb; o.textContent=bb+' BB'; if(bb===settings.bb) o.selected=true; bbSelect.appendChild(o); }
+  bbSelect.onchange = ()=>{ settings.bb=parseInt(bbSelect.value,10); renderSettings(); updateSummary(); newQuestion(); renderGrid(); };
+  document.getElementById('bbNote').textContent = isPushFold()
+    ? '20BB以下はプッシュ/フォールド戦略として、オールインかフォールドの2択で出題します。'
+    : '通常のレイズ/3ベット/コール判定で出題します。スタックが浅いほどレンジはやや広がります。';
+
+  const tsWrap = document.getElementById('tableSizeRow'); tsWrap.innerHTML='';
+  [6,8,9].forEach(n=>{
+    const el = document.createElement('div');
+    el.className = 'set-chip' + (settings.tableSize===n?' active':'');
+    el.textContent = n+'max';
+    el.addEventListener('click', ()=>{ settings.tableSize=n; renderSettings(); updateSummary(); newQuestion(); renderPosChips(); renderPickers(); renderGrid(); populateMyHandsForm(); });
+    tsWrap.appendChild(el);
+  });
+
+  const scWrap = document.getElementById('scenarioRow'); scWrap.innerHTML='';
+  [{key:'all',label:'すべて'},{key:'open',label:'オープンのみ'},{key:'3bet',label:'3ベットのみ'}].forEach(s=>{
+    const el = document.createElement('div');
+    el.className = 'set-chip' + (settings.scenarioFilter===s.key?' active':'');
+    el.textContent = s.label;
+    el.addEventListener('click', ()=>{ settings.scenarioFilter=s.key; renderSettings(); newQuestion(); });
+    scWrap.appendChild(el);
+  });
+}
+document.getElementById('btnResetHistory').addEventListener('click', ()=>{
+  quizHistory = []; reviewQueue = []; score=0; total=0; streak=0;
+  document.getElementById('statScore').textContent='0/0';
+  document.getElementById('statStreak').textContent='0';
+  saveAll(); renderReviewTab();
+});
+
+function updateSummary(){
+  saveAll();
+  const wrap = document.getElementById('summaryBar'); const chips=[];
+  chips.push({label: settings.gameType==='mtt' ? 'MTT' : 'キャッシュ', mtt: settings.gameType==='mtt'});
+  if(settings.gameType==='mtt') chips.push({label: {early:'序盤',bubble:'バブル期',final:'最終テーブル'}[settings.mttStage], mtt:true});
+  chips.push({label: settings.bb+'BB' + (isPushFold()?' (Push/Fold)':'')});
+  chips.push({label: settings.tableSize+'max'});
+  wrap.innerHTML = '';
+  chips.forEach(c=>{ const el=document.createElement('div'); el.className='summary-chip'+(c.mtt?' mtt':''); el.textContent=c.label; wrap.appendChild(el); });
+}
+
+/* ================= Review tab ================= */
+function renderReviewTab(){
+  const boxes = document.getElementById('reviewStatsBoxes');
+  const preflopHist = quizHistory.filter(h=>h.module==='preflop');
+  const correctCount = preflopHist.filter(h=>h.isCorrect).length;
+  const acc = preflopHist.length ? Math.round(correctCount/preflopHist.length*100) : 0;
+  const missCount = preflopHist.length - correctCount;
+  boxes.innerHTML = `
+    <div class="rs-box"><b>${preflopHist.length}</b><small>出題数</small></div>
+    <div class="rs-box"><b>${acc}%</b><small>正答率</small></div>
+    <div class="rs-box"><b>${missCount}</b><small>ミス数</small></div>`;
+
+  const posStats = {};
+  preflopHist.forEach(h=>{
+    const key = h.pos;
+    if(!posStats[key]) posStats[key] = {c:0,t:0};
+    posStats[key].t++; if(h.isCorrect) posStats[key].c++;
+  });
+  const posBlock = document.getElementById('posAccuracyBlock');
+  const keys = Object.keys(posStats).sort((a,b)=> (posStats[b].c/posStats[b].t) - (posStats[a].c/posStats[a].t));
+  if(keys.length===0){
+    posBlock.innerHTML = `<div class="hist-empty">まだ解答履歴がありません。プリフロップタブでクイズに答えてみましょう。</div>`;
+  } else {
+    posBlock.innerHTML = keys.map(k=>{
+      const st = posStats[k]; const pct = Math.round(st.c/st.t*100);
+      return `<div class="pos-acc-row"><span>${LABELS[k]||k}</span><div class="pos-acc-bar"><div class="pos-acc-fill" style="width:${pct}%;"></div></div><span>${pct}% (${st.c}/${st.t})</span></div>`;
+    }).join('');
+  }
+
+  renderHistFilterRow();
+  renderHistList();
+}
+let histFilter = 'wrong';
+function renderHistFilterRow(){
+  const wrap = document.getElementById('histFilterRow'); wrap.innerHTML='';
+  [{key:'wrong',label:'間違いのみ'},{key:'all',label:'すべて表示'}].forEach(f=>{
+    const el = document.createElement('div');
+    el.className = 'set-chip' + (histFilter===f.key?' active':'');
+    el.textContent = f.label;
+    el.addEventListener('click', ()=>{ histFilter=f.key; renderHistFilterRow(); renderHistList(); });
+    wrap.appendChild(el);
+  });
+}
+function renderHistList(){
+  const list = document.getElementById('histList');
+  const items = quizHistory.filter(h=>h.module==='preflop' && (histFilter==='all' || !h.isCorrect));
+  if(items.length===0){ list.innerHTML = `<div class="hist-empty">該当する履歴がありません。</div>`; return; }
+  list.innerHTML = items.slice(0,60).map(h=>{
+    const posText = h.scenario==='open' ? `${LABELS[h.pos]} オープン` : `${LABELS[h.opener]}オープン → ${LABELS[h.pos]}`;
+    return `<div class="hist-item ${h.isCorrect?'':'wrong'}">
+      <div class="hist-top"><span>${h.handNotation} ・ ${posText}</span><span class="hist-badge ${h.isCorrect?'correct':'wrong'}">${h.isCorrect?'正解':'不正解'}</span></div>
+      <div>あなた: ${actionLabel(h.userAction)} / 目安: ${actionLabel(h.correctAction)}</div>
+    </div>`;
+  }).join('');
+}
+document.getElementById('btnReviewMiss').addEventListener('click', ()=>{
+  const misses = quizHistory.filter(h=>h.module==='preflop' && !h.isCorrect);
+  if(misses.length===0) return;
+  reviewQueue = misses.slice(0,20).map(h=>({ scenario:h.scenario, pos:h.pos, opener:h.opener, handNotation:h.handNotation }));
+  document.querySelector('.tab[data-tab="quiz"]').click();
+  newQuestion();
+});
+
+/* ================= Postflop trainer ================= */
+function makeDeck(){
+  const deck = [];
+  RANKS.forEach(r=> SUITS.forEach(s=> deck.push({rank:r, val:RANK_VAL[r], suit:s})));
+  return shuffle(deck);
+}
+function bestHandCategory(cards){
+  const ranks = cards.map(c=>c.val);
+  const suits = cards.map(c=>c.suit.key);
+  const rankCounts = {}; ranks.forEach(r=> rankCounts[r]=(rankCounts[r]||0)+1);
+  const suitCounts = {}; suits.forEach(s=> suitCounts[s]=(suitCounts[s]||0)+1);
+  const counts = Object.values(rankCounts).sort((a,b)=>b-a);
+  const flushSuit = Object.keys(suitCounts).find(s=>suitCounts[s]>=5);
+  const uniq = [...new Set(ranks)].sort((a,b)=>b-a);
+  function findStraightHigh(list){
+    const withWheel = list.includes(14) ? [...list, 1] : list;
+    for(let i=0;i<withWheel.length;i++){
+      let run=1;
+      for(let k=i;k<withWheel.length-1;k++){ if(withWheel[k]-withWheel[k+1]===1) run++; else break; }
+      if(run>=5) return withWheel[i];
+    }
+    return null;
+  }
+  const straightHigh = findStraightHigh(uniq);
+  let straightFlushHigh = null;
+  if(flushSuit){
+    const flushRanks = [...new Set(cards.filter(c=>c.suit.key===flushSuit).map(c=>c.val))].sort((a,b)=>b-a);
+    straightFlushHigh = findStraightHigh(flushRanks);
+  }
+  if(straightFlushHigh) return {rank:8, label: straightFlushHigh===14 ? 'ロイヤルフラッシュ':'ストレートフラッシュ'};
+  if(counts[0]===4) return {rank:7, label:'フォーカード'};
+  if(counts[0]===3 && counts[1]>=2) return {rank:6, label:'フルハウス'};
+  if(flushSuit) return {rank:5, label:'フラッシュ'};
+  if(straightHigh) return {rank:4, label:'ストレート'};
+  if(counts[0]===3) return {rank:3, label:'スリーカード'};
+  if(counts[0]===2 && counts[1]===2) return {rank:2, label:'ツーペア'};
+  if(counts[0]===2) return {rank:1, label:'ワンペア'};
+  return {rank:0, label:'ハイカード'};
+}
+function hasFlushDraw(cards){
+  const suitCounts = {}; cards.forEach(c=> suitCounts[c.suit.key]=(suitCounts[c.suit.key]||0)+1);
+  return Object.values(suitCounts).some(v=>v===4);
+}
+function hasStraightDraw(cards){
+  const uniq = [...new Set(cards.map(c=>c.val))].sort((a,b)=>b-a);
+  const withWheel = uniq.includes(14) ? [...uniq,1] : uniq;
+  for(let i=0;i<withWheel.length;i++){
+    let run=1;
+    for(let k=i;k<withWheel.length-1;k++){ if(withWheel[k]-withWheel[k+1]===1) run++; else break; }
+    if(run===4) return true;
+  }
+  return false;
+}
+function boardTexture(board){
+  const suitCounts = {}; board.forEach(c=> suitCounts[c.suit.key]=(suitCounts[c.suit.key]||0)+1);
+  const maxSuit = Math.max(...Object.values(suitCounts));
+  const monotone = maxSuit>=3, twoTone = maxSuit===2, rainbow = maxSuit===1;
+  const rankCounts = {}; board.forEach(c=> rankCounts[c.val]=(rankCounts[c.val]||0)+1);
+  const paired = Object.values(rankCounts).some(v=>v>=2);
+  const uniq = [...new Set(board.map(c=>c.val))].sort((a,b)=>b-a);
+  const spread = uniq[0]-uniq[uniq.length-1];
+  const connected = spread<=4;
+  const highCard = uniq[0]>=12;
+  const lowBoard = uniq[0]<=9;
+  const wet = monotone || connected || (twoTone && !paired);
+  return { monotone, twoTone, rainbow, paired, connected, highCard, lowBoard, wet };
+}
+function recommendPostflopAction(handCat, hasFD, hasSD, texture, isIP){
+  if(handCat.rank>=3) return 'bet';
+  if(handCat.rank>=1) return (texture.wet && !isIP) ? 'check' : 'bet';
+  if(hasFD || hasSD) return (isIP || !texture.wet) ? 'bet' : 'check';
+  return 'check';
+}
+
+let pf = { hole:[], board:[], street:'flop', isIP:true, answered:false, score:0, total:0 };
+
+function newPostflopHand(){
+  const deck = makeDeck();
+  pf.hole = [deck.pop(), deck.pop()];
+  pf.board = [deck.pop(), deck.pop(), deck.pop()];
+  pf._deck = deck;
+  pf.street = 'flop';
+  pf.isIP = Math.random()<0.5;
+  pf.answered = false;
+  renderPostflopStreet();
+}
+function advancePostflopStreet(){
+  if(pf.street==='flop'){ pf.board.push(pf._deck.pop()); pf.street='turn'; }
+  else if(pf.street==='turn'){ pf.board.push(pf._deck.pop()); pf.street='river'; }
+  pf.answered = false;
+  renderPostflopStreet();
+}
+function renderPostflopStreet(){
+  document.getElementById('pfStreetLabel').textContent = {flop:'FLOP',turn:'TURN',river:'RIVER'}[pf.street];
+  document.getElementById('pfStatScore').textContent = `${pf.score}/${pf.total}`;
+  document.getElementById('pfPositionLine').innerHTML = `あなたは今回のハンドのプリフロップレイザー・<span class="pos-badge">${pf.isIP?'ポジションあり(IP)':'ポジションなし(OOP)'}</span>`;
+
+  renderCards(pf.hole.map(c=>({rank:c.rank, suit:c.suit})), 'pfHoleWrap', true);
+  renderCards(pf.board.map(c=>({rank:c.rank, suit:c.suit})), 'pfBoardWrap', true);
+
+  const allCards = [...pf.hole, ...pf.board];
+  const cat = bestHandCategory(allCards);
+  const fd = hasFlushDraw(allCards), sd = hasStraightDraw(allCards);
+  const texture = boardTexture(pf.board);
+
+  const tags = document.getElementById('pfTags');
+  const t = [];
+  t.push(`<span class="texture-tag strength">${cat.label}</span>`);
+  if(fd) t.push(`<span class="texture-tag">フラッシュドロー</span>`);
+  if(sd) t.push(`<span class="texture-tag">ストレートドロー</span>`);
+  t.push(`<span class="texture-tag">${texture.monotone?'モノトーン':texture.twoTone?'ツートーン':'レインボー'}</span>`);
+  if(texture.paired) t.push(`<span class="texture-tag">ペアボード</span>`);
+  if(texture.connected) t.push(`<span class="texture-tag">connected</span>`);
+  t.push(`<span class="texture-tag">${texture.highCard?'ハイボード':texture.lowBoard?'ローボード':'ミドルボード'}</span>`);
+  tags.innerHTML = t.join('');
+
+  const streetLabel = {flop:'フロップ', turn:'ターン', river:'リバー'}[pf.street];
+  document.getElementById('pfQuestion').innerHTML = `${streetLabel}です。${pf.isIP?'あなたはポジションあり':'あなたはポジションなし'}。<b>ベット</b>しますか、<b>チェック</b>しますか?`;
+
+  const actWrap = document.getElementById('pfActions');
+  actWrap.innerHTML = '';
+  [{key:'bet',label:'ベット',cls:'bet'},{key:'check',label:'チェック',cls:'check'}].forEach(b=>{
+    const btn = document.createElement('button');
+    btn.className = 'chip-btn ' + b.cls; btn.textContent = b.label;
+    btn.addEventListener('click', ()=>submitPostflopAnswer(b.key, cat, fd, sd, texture));
+    actWrap.appendChild(btn);
+  });
+
+  document.getElementById('pfFeedback').className = 'feedback';
+  document.getElementById('pfNextStreet').className = 'next-btn';
+  document.getElementById('pfNextHand').className = 'next-btn';
+}
+function submitPostflopAnswer(userAction, cat, fd, sd, texture){
+  if(pf.answered) return;
+  pf.answered = true; pf.total++;
+  const correct = recommendPostflopAction(cat, fd, sd, texture, pf.isIP);
+  const isCorrect = userAction===correct;
+  if(isCorrect) pf.score++;
+  document.getElementById('pfStatScore').textContent = `${pf.score}/${pf.total}`;
+
+  const fb = document.getElementById('pfFeedback');
+  fb.className = 'feedback show ' + (isCorrect?'correct':'wrong');
+  document.getElementById('pfFbTitle').textContent = isCorrect ? '正解!' : '不正解';
+  let reason;
+  if(cat.rank>=3) reason = '強い完成役なので価値を稼ぎにいくのが基本です。';
+  else if(cat.rank>=1) reason = texture.wet && !pf.isIP ? 'ウェットなボードでOOPなので、相手にレイズされやすくチェック寄りが無難です。' : 'この程度のメイドハンドなら、ドライ寄りのボードやIPではベットして主導権を握れます。';
+  else if(fd||sd) reason = (pf.isIP || !texture.wet) ? 'ハンド自体は弱くても、ドローがあるのでセミブラフでベットする価値があります。' : 'ドローはありますが、ウェットなボードでOOPなのでチェックして様子を見るのが無難です。';
+  else reason = 'ハンドに強みがなく、相手のレンジに押し負けやすいのでチェックが基本です。';
+  document.getElementById('pfFbBody').textContent = `${actionLabel(correct)}が目安です。${reason}(簡易ヒューリスティックによる概念practiceです)`;
+
+  document.querySelectorAll('#pfActions .chip-btn').forEach(b=>b.disabled=true);
+  if(pf.street==='river'){ document.getElementById('pfNextHand').className='next-btn primary show'; }
+  else { document.getElementById('pfNextStreet').className='next-btn primary show'; document.getElementById('pfNextHand').className='next-btn show'; }
+
+  pushHistory({ module:'postflop', scenario:pf.street, pos: pf.isIP?'IP':'OOP', opener:null, handNotation: `${pf.hole.map(c=>c.rank+c.suit.sym).join('')}`, userAction, correctAction:correct, isCorrect });
+}
+document.getElementById('pfNextStreet').addEventListener('click', advancePostflopStreet);
+document.getElementById('pfNextHand').addEventListener('click', newPostflopHand);
+
+/* ================= My hands (real hand log) ================= */
+let myHands = [];
+let mhLogId = 1;
+const MH_TAGS = ['ミス','ナイスプレー','ブラフ','クーラー','検討中'];
+let mhSelectedTags = [];
+
+function fillSelect(el, options){
+  el.innerHTML = '';
+  options.forEach(o=>{ const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; el.appendChild(opt); });
+}
+function populateMyHandsForm(){
+  const ts = parseInt(document.getElementById('mhTableSize').value || settings.tableSize, 10) || settings.tableSize;
+  const ps = POSITION_SETS[ts];
+  fillSelect(document.getElementById('mhPos'), ps.order.map(p=>({value:p, label:LABELS[p]})));
+  fillSelect(document.getElementById('mhOpener'), ps.openOrder.map(p=>({value:p, label:LABELS[p]})));
+
+  const bbSel = document.getElementById('mhBB'); bbSel.innerHTML='';
+  for(let bb=10; bb<=150; bb+=10){ const o=document.createElement('option'); o.value=bb; o.textContent=bb+' BB'; bbSel.appendChild(o); }
+
+  fillSelect(document.getElementById('mhRank1'), RANKS.map(r=>({value:r, label:r})));
+  fillSelect(document.getElementById('mhRank2'), RANKS.map(r=>({value:r, label:r})));
+  fillSelect(document.getElementById('mhSuit1'), SUITS.map(s=>({value:s.key, label:s.sym})));
+  fillSelect(document.getElementById('mhSuit2'), SUITS.map(s=>({value:s.key, label:s.sym})));
+
+  updateMhActionOptions();
+
+  const tagWrap = document.getElementById('mhTags'); tagWrap.innerHTML='';
+  MH_TAGS.forEach(tag=>{
+    const el = document.createElement('div');
+    el.className = 'set-chip' + (mhSelectedTags.includes(tag)?' active':'');
+    el.textContent = tag;
+    el.addEventListener('click', ()=>{
+      if(mhSelectedTags.includes(tag)) mhSelectedTags = mhSelectedTags.filter(t=>t!==tag);
+      else mhSelectedTags.push(tag);
+      populateMyHandsForm();
+    });
+    tagWrap.appendChild(el);
+  });
+}
+function updateMhActionOptions(){
+  const situation = document.getElementById('mhSituation').value;
+  const bb = parseInt(document.getElementById('mhBB').value || 100, 10);
+  const pf = bb<=20;
+  document.getElementById('mhOpenerBlock').style.display = situation==='facing' ? '' : 'none';
+  document.getElementById('mhActionBlock').style.display = situation==='other' ? 'none' : '';
+  const actSel = document.getElementById('mhAction');
+  let opts;
+  if(situation==='open') opts = pf ? [{value:'allin',label:'オールイン'},{value:'fold',label:'フォールド'}] : [{value:'raise',label:'レイズ'},{value:'fold',label:'フォールド'}];
+  else opts = pf ? [{value:'allin',label:'オールイン'},{value:'fold',label:'フォールド'}] : [{value:'3bet',label:'3ベット'},{value:'call',label:'コール'},{value:'fold',label:'フォールド'}];
+  fillSelect(actSel, opts);
+  updateMhCompare();
+}
+function updateMhCompare(){
+  const box = document.getElementById('mhCompare');
+  const situation = document.getElementById('mhSituation').value;
+  if(situation==='other'){ box.className='compare-box'; return; }
+  const gameType = document.getElementById('mhGameType').value;
+  const tableSize = parseInt(document.getElementById('mhTableSize').value,10);
+  const bb = parseInt(document.getElementById('mhBB').value,10);
+  const pos = document.getElementById('mhPos').value;
+  const tmpSettings = { gameType, mttStage:'early', bb, tableSize, scenarioFilter:'all' };
+  const r1 = document.getElementById('mhRank1').value, s1 = document.getElementById('mhSuit1').value;
+  const r2 = document.getElementById('mhRank2').value, s2 = document.getElementById('mhSuit2').value;
+  const suited = s1===s2;
+  const notation = handNotationFromCards(r1,r2,suited);
+  const cell = cellByNotation(notation);
+  const action = document.getElementById('mhAction').value;
+
+  let correct, contextText;
+  if(situation==='open'){
+    const pct = openPct(pos, tmpSettings);
+    correct = cell.percentile<=pct ? (isPushFold(tmpSettings)?'allin':'raise') : 'fold';
+    contextText = `${LABELS[pos]} オープン想定`;
+  } else {
+    const opener = document.getElementById('mhOpener').value;
+    const th = threeBetThresholds(pos, opener, tmpSettings);
+    if(th.mode==='pushfold') correct = cell.percentile<=th.shove ? 'allin' : 'fold';
+    else if(cell.percentile<=th.threeBet) correct='3bet';
+    else if(cell.percentile<=th.call) correct='call';
+    else correct='fold';
+    contextText = `${LABELS[opener]}オープン → ${LABELS[pos]}`;
+  }
+  const match = action===correct;
+  box.className = 'compare-box show';
+  box.innerHTML = `<b style="color:${match?'var(--gold-bright)':'#e08a80'};">${match?'モデルと一致':'モデルとは異なる選択'}</b><br>${notation}・${contextText}の簡易モデル目安: <b>${actionLabel(correct)}</b> / 実際のアクション: <b>${actionLabel(action)}</b>`;
+}
+function handNotationFromCards(r1,r2,suited){
+  const i1 = RANKS.indexOf(r1), i2 = RANKS.indexOf(r2);
+  if(i1===i2) return r1+r2;
+  const hi = i1<i2 ? r1 : r2, lo = i1<i2 ? r2 : r1;
+  return hi+lo+(suited?'s':'o');
+}
+function bindMhListeners(){
+  document.getElementById('mhSituation').addEventListener('change', ()=>{ updateMhActionOptions(); });
+  document.getElementById('mhTableSize').addEventListener('change', ()=>{ populateMyHandsForm(); });
+  ['mhGameType','mhBB','mhPos','mhOpener','mhRank1','mhSuit1','mhRank2','mhSuit2','mhAction'].forEach(id=>{
+    document.getElementById(id).addEventListener('change', updateMhCompare);
+  });
+}
+
+document.getElementById('mhSave').addEventListener('click', ()=>{
+  const situation = document.getElementById('mhSituation').value;
+  const entry = {
+    id: mhLogId++,
+    ts: new Date().toISOString(),
+    situation,
+    gameType: document.getElementById('mhGameType').value,
+    tableSize: document.getElementById('mhTableSize').value,
+    bb: document.getElementById('mhBB').value,
+    pos: document.getElementById('mhPos').value,
+    opener: situation==='facing' ? document.getElementById('mhOpener').value : null,
+    r1: document.getElementById('mhRank1').value, s1: document.getElementById('mhSuit1').value,
+    r2: document.getElementById('mhRank2').value, s2: document.getElementById('mhSuit2').value,
+    action: situation==='other' ? null : document.getElementById('mhAction').value,
+    tags: mhSelectedTags.slice(),
+    notes: document.getElementById('mhNotes').value
+  };
+  myHands.unshift(entry);
+  saveAll();
+  document.getElementById('mhNotes').value = '';
+  mhSelectedTags = [];
+  populateMyHandsForm();
+  renderMyHandsList();
+});
+
+function renderMyHandsList(){
+  document.getElementById('mhCount').textContent = myHands.length;
+  const list = document.getElementById('mhList');
+  if(myHands.length===0){ list.innerHTML = `<div class="hist-empty">まだ記録がありません。</div>`; return; }
+  list.innerHTML = myHands.map(h=>{
+    const notation = handNotationFromCards(h.r1,h.r2,h.s1===h.s2);
+    const suitSyms = SUITS.reduce((acc,s)=>{ acc[s.key]=s.sym; return acc; },{});
+    const cardsText = `${h.r1}${suitSyms[h.s1]} ${h.r2}${suitSyms[h.s2]}`;
+    const sitText = h.situation==='open' ? `${LABELS[h.pos]}オープン` : h.situation==='facing' ? `${LABELS[h.opener]}オープン→${LABELS[h.pos]}` : `${LABELS[h.pos]}・その他`;
+    const dateText = new Date(h.ts).toLocaleDateString('ja-JP');
+    return `<div class="log-item">
+      <button class="del" data-id="${h.id}">削除</button>
+      <div class="log-meta">${dateText} ・ ${h.gameType==='mtt'?'MTT':'キャッシュ'} ・ ${h.tableSize}max ・ ${h.bb}BB</div>
+      <div><b>${cardsText}</b>(${notation}) ・ ${sitText}${h.action? ' ・ '+actionLabel(h.action):''}</div>
+      ${h.tags.length? `<div style="margin-top:4px;">${h.tags.map(t=>`<span class="texture-tag">${t}</span>`).join(' ')}</div>` : ''}
+      ${h.notes? `<div style="margin-top:4px; color:var(--cream-dim);">${escapeHtml(h.notes)}</div>` : ''}
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.del').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = parseInt(btn.dataset.id,10);
+      myHands = myHands.filter(h=>h.id!==id);
+      saveAll(); renderMyHandsList();
+    });
+  });
+}
+function escapeHtml(str){
+  return str.replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+document.getElementById('mhExport').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(myHands, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `range-dojo-hands-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+document.getElementById('mhImport').addEventListener('click', ()=> document.getElementById('mhImportFile').click());
+document.getElementById('mhImportFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const data = JSON.parse(ev.target.result);
+      if(Array.isArray(data)){
+        myHands = data.concat(myHands);
+        mhLogId = Math.max(mhLogId, ...myHands.map(h=>h.id||0)) + 1;
+        saveAll(); renderMyHandsList();
+      }
+    }catch(err){ /* ignore invalid file */ }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* ================= Init ================= */
+(function restore(){
+  const s = Store.get('settings', null);
+  if(s){ Object.keys(settings).forEach(k=>{ if(s[k]!==undefined) settings[k]=s[k]; }); }
+  const mh = Store.get('myHands', null);
+  if(Array.isArray(mh)){ myHands = mh; mhLogId = Math.max(1, ...myHands.map(h=>h.id||0)) + 1; }
+  const hs = Store.get('history', null);
+  if(Array.isArray(hs)){ quizHistory = hs; histIdCounter = Math.max(1, ...quizHistory.map(h=>h.id||0)) + 1; }
+  const sc = Store.get('score', null);
+  if(sc){ score=sc.score||0; total=sc.total||0; streak=sc.streak||0;
+    document.getElementById('statScore').textContent = `${score}/${total}`;
+    document.getElementById('statStreak').textContent = streak; }
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+
+document.getElementById('storageNote').textContent = Store.available
+  ? '設定・解答履歴・マイハンドはこの端末に自動保存されます。'
+  : 'この環境では自動保存が使えません。マイハンドはJSON書き出しで保存してください。';
+
+renderChartModeTabs();
+syncChartControlsVisibility();
+renderPosChips();
+renderPickers();
+renderSettings();
+updateSummary();
+newQuestion();
+renderGrid();
+populateMyHandsForm();
+bindMhListeners();
+renderMyHandsList();
+renderReviewTab();
+newPostflopHand();
+</script>
+</body>
+</html>
