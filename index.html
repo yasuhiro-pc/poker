@@ -244,6 +244,7 @@
   <div class="tabs">
     <div class="tab active" data-tab="quiz">プリフロップ</div>
     <div class="tab" data-tab="postflop">ポストフロップ</div>
+    <div class="tab" data-tab="full">通し練習</div>
     <div class="tab" data-tab="spot">スポット</div>
     <div class="tab" data-tab="review">振り返り</div>
     <div class="tab" data-tab="myhands">マイハンド</div>
@@ -298,6 +299,27 @@
     </div>
   </div>
 
+
+
+  <!-- FULL HAND VIEW -->
+  <div id="fullView" style="display:none;">
+    <div class="card-panel">
+      <div class="panel-title">通し練習</div>
+      <div class="panel-sub">プリフロップからリバーまで1ハンドを通してプレイします。各アクションを判定し、ハンド終了時に合計スコアが出ます。相手にはランダムにハンドが配られ、そのポジションのレンジ戦略に従って降りることもあります。</div>
+      <div class="review-stats" id="fhSession"></div>
+      <div class="position-line" id="fhPositionLine"></div>
+      <div class="math-box" id="fhHistory" style="margin-bottom:14px;margin-top:0;"></div>
+      <div class="cards-wrap" id="fhHoleWrap"></div>
+      <div class="cards-wrap" id="fhBoardWrap"></div>
+      <div class="tag-row" id="fhTags"></div>
+      <div class="question" id="fhQuestion"></div>
+      <div class="actions" id="fhActions"></div>
+      <div class="feedback" id="fhFeedback"><div class="fb-title" id="fhFbTitle"></div><div id="fhFbBody"></div></div>
+      <div class="range-panel" id="fhSummary"></div>
+      <button class="next-btn" id="fhNext">次へ →</button>
+      <button class="next-btn" id="fhNewHand">新しいハンドへ →</button>
+    </div>
+  </div>
 
   <!-- SPOT VIEW -->
   <div id="spotView" style="display:none;">
@@ -481,7 +503,7 @@
     </div>
   </div>
 
-  <footer>Chen式スコア・簡易ICM・簡易ポストフロップヒューリスティックに基づく学習用モデルです</footer>
+  <footer>Nash均衡・実測エクイティ・簡易ICMに基づく学習用モデルです</footer>
 </div>
 
 <script>
@@ -511,6 +533,7 @@ function saveAll(){
   Store.set('myHands', myHands);
   Store.set('history', quizHistory.slice(0,200));
   Store.set('score', {score, total, streak});
+  Store.set('fhSession', fhSession);
 }
 
 /* ================= GTO data layer ================= */
@@ -901,12 +924,13 @@ document.querySelectorAll('.tab').forEach(tab=>{
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
     tab.classList.add('active');
     const which = tab.dataset.tab;
-    ['quiz','postflop','spot','review','myhands','chart','settings'].forEach(v=>{
+    ['quiz','postflop','full','spot','review','myhands','chart','settings'].forEach(v=>{
       document.getElementById(v+'View').style.display = (v===which) ? '' : 'none';
     });
     if(which==='chart') renderGrid();
     if(which==='review') renderReviewTab();
     if(which==='spot') renderSpot();
+    if(which==='full'){ if(!FullHand) fhStart(); else fhRender(); }
   });
 });
 
@@ -1142,6 +1166,179 @@ document.getElementById('btnReviewMiss').addEventListener('click', ()=>{
   newQuestion();
 });
 
+/* ================= ポストフロップ評価エンジン ================= */
+const PF = (function(){
+  const STRAIGHTS = [];
+  for(let hi=12; hi>=4; hi--){ let m=0; for(let k=hi-4;k<=hi;k++) m|=(1<<k); STRAIGHTS.push([m,hi]); }
+  STRAIGHTS.push([(1<<12)|(1<<3)|(1<<2)|(1<<1)|1, 3]);   // ホイール
+
+  /* 5〜7枚から最良の5枚を数値化。大きいほど強い */
+  function evalScore(cards){
+    const rc = new Array(13).fill(0);
+    const sc = {c:0,d:0,h:0,s:0}, bySuit = {c:0,d:0,h:0,s:0};
+    let mask = 0;
+    for(const c of cards){
+      const r = c.val - 2;
+      rc[r]++; sc[c.suit.key]++; mask |= (1<<r); bySuit[c.suit.key] |= (1<<r);
+    }
+    let flushSuit = null;
+    for(const k in sc) if(sc[k] >= 5) flushSuit = k;
+    const stHigh = m => { for(const [p,h] of STRAIGHTS) if((m & p) === p) return h; return -1; };
+    const st = stHigh(mask);
+    const sf = flushSuit ? stHigh(bySuit[flushSuit]) : -1;
+
+    let quad=-1, trips=-1, trips2=-1, p1=-1, p2=-1;
+    for(let r=0;r<13;r++){
+      const n = rc[r];
+      if(n===4) quad = r;
+      else if(n===3){ trips2 = trips; trips = r; }
+      else if(n===2){ p2 = p1; p1 = r; }
+    }
+    const topN = (m,n,excl)=>{
+      const out=[]; const ex = excl||[];
+      for(let r=12;r>=0 && out.length<n;r--) if(((m>>r)&1) && ex.indexOf(r)<0) out.push(r);
+      while(out.length<n) out.push(0);
+      return out;
+    };
+    const pack = (cat,t)=>{ let v = cat; for(let i=0;i<5;i++) v = v*16 + (t[i]||0); return v; };
+
+    if(sf>=0) return pack(8,[sf]);
+    if(quad>=0) return pack(7,[quad, topN(mask,1,[quad])[0]]);
+    if(trips>=0 && (trips2>=0 || p1>=0)) return pack(6,[trips, Math.max(trips2,p1)]);
+    if(flushSuit) return pack(5, topN(bySuit[flushSuit],5));
+    if(st>=0) return pack(4,[st]);
+    if(trips>=0){ const k=topN(mask,2,[trips]); return pack(3,[trips,k[0],k[1]]); }
+    if(p2>=0){ const k=topN(mask,1,[p1,p2]); return pack(2,[p1,p2,k[0]]); }
+    if(p1>=0){ const k=topN(mask,3,[p1]); return pack(1,[p1,k[0],k[1],k[2]]); }
+    return pack(0, topN(mask,5));
+  }
+
+  /* ホールカードがボードに対してどう絡んでいるかを説明する。
+     ボードだけで出来ているペアを自分のペアと数えない。 */
+  function describe(hole, board){
+    const all = hole.concat(board);
+    const bv = board.map(c=>c.val);
+    const uniqB = [...new Set(bv)].sort((a,b)=>b-a);
+    const hv = hole.map(c=>c.val).sort((a,b)=>b-a);
+    const sc = evalScore(all);
+    const cat = Math.floor(sc / Math.pow(16,5));
+
+    if(cat >= 8) return {label:'ストレートフラッシュ', tier:5};
+    if(cat === 7) return {label:'フォーカード', tier:5};
+    if(cat === 6) return {label:'フルハウス', tier:5};
+    if(cat === 5) return {label:'フラッシュ', tier:5};
+    if(cat === 4) return {label:'ストレート', tier:5};
+
+    const paired = hv.filter(v => bv.indexOf(v) >= 0);
+    if(hv[0] === hv[1]){                                  // ポケットペア
+      if(bv.indexOf(hv[0]) >= 0) return {label:'セット', tier:5};
+      const above = uniqB.filter(v => v > hv[0]).length;
+      if(above === 0) return {label:'オーバーペア', tier:4};
+      if(above === 1) return {label:'セカンドペア(ポケット)', tier:3};
+      return {label:'アンダーペア', tier:1};
+    }
+    if(paired.length === 2) return {label:'ツーペア', tier:5};
+    if(paired.length === 1){
+      const v = paired[0];
+      if(bv.filter(x=>x===v).length >= 2) return {label:'トリップス', tier:5};
+      const idx = uniqB.indexOf(v);
+      const kicker = hv[0]===v ? hv[1] : hv[0];
+      if(idx === 0) return {label: kicker>=12 ? 'トップペア(good kicker)' : 'トップペア', tier:4};
+      if(idx === 1) return {label:'セカンドペア', tier:3};
+      if(idx === 2) return {label:'サードペア', tier:2};
+      return {label:'ローペア', tier:2};
+    }
+    const boardPaired = bv.length !== new Set(bv).size;
+    if(hv[0] === 14) return {label: boardPaired ? 'Aハイ(ボードのペアのみ)' : 'Aハイ', tier:1};
+    return {label: boardPaired ? 'ノーヒット(ボードのペアのみ)' : 'ノーヒット', tier:0};
+  }
+
+  function draws(hole, board){
+    // リバーは引くカードが残っていないのでドローは存在しない
+    if(board.length >= 5) return { fd:false, oesd:false, gutshot:false };
+    const all = hole.concat(board);
+    const suits = {};
+    all.forEach(c => suits[c.suit.key] = (suits[c.suit.key]||0)+1);
+    const holeSuits = {};
+    hole.forEach(c => holeSuits[c.suit.key] = (holeSuits[c.suit.key]||0)+1);
+    // 自分のホールカードが絡むフラッシュドローのみ数える
+    let fd = false;
+    for(const k in suits) if(suits[k] === 4 && (holeSuits[k]||0) >= 1) fd = true;
+
+    const vals = [...new Set(all.map(c=>c.val))].sort((a,b)=>b-a);
+    const withWheel = vals.indexOf(14)>=0 ? vals.concat([1]) : vals;
+    let oesd = false, gutshot = false;
+    for(let i=0;i<withWheel.length;i++){
+      let run = 1;
+      for(let k=i;k<withWheel.length-1;k++){ if(withWheel[k]-withWheel[k+1]===1) run++; else break; }
+      if(run === 4) oesd = true;
+    }
+    // ガットショット: 5枚窓に4枚入っている
+    for(let hi=14; hi>=5; hi--){
+      let cnt = 0;
+      for(let k=hi-4;k<=hi;k++) if(withWheel.indexOf(k)>=0) cnt++;
+      if(cnt === 4) gutshot = true;
+    }
+    return { fd, oesd, gutshot: gutshot && !oesd };
+  }
+
+  /* 指定レンジからランダムに1コンボ取り出す(使用済みカードを避ける) */
+  function sampleCombo(bits, usedKeys, rng){
+    for(let attempt=0; attempt<60; attempt++){
+      const cell = sampleFromRange(bits);
+      const pair = randomSuitPair(cell);
+      const cards = pair.map(x => ({rank:x.rank, val:RANK_VAL[x.rank], suit:x.suit}));
+      const k0 = cards[0].rank + cards[0].suit.sym, k1 = cards[1].rank + cards[1].suit.sym;
+      if(!usedKeys.has(k0) && !usedKeys.has(k1)) return cards;
+    }
+    return null;
+  }
+
+  /* ヒーローのハンド vs 相手レンジ のエクイティ(残りボードを引き切る) */
+  function equityVsRange(hole, board, villBits, nSims){
+    const used = new Set(hole.concat(board).map(c => c.rank + c.suit.sym));
+    const need = 5 - board.length;
+    let win = 0, tie = 0, n = 0;
+    for(let s=0; s<nSims; s++){
+      const vill = sampleCombo(villBits, used, null);
+      if(!vill) continue;
+      const blocked = new Set(used);
+      vill.forEach(c => blocked.add(c.rank + c.suit.sym));
+      const runout = [];
+      let guard = 0;
+      while(runout.length < need && guard++ < 200){
+        const c = { rank: RANKS[Math.floor(Math.random()*13)], suit: SUITS[Math.floor(Math.random()*4)] };
+        c.val = RANK_VAL[c.rank];
+        const key = c.rank + c.suit.sym;
+        if(blocked.has(key)) continue;
+        blocked.add(key); runout.push(c);
+      }
+      if(runout.length < need) continue;
+      const full = board.concat(runout);
+      const a = evalScore(hole.concat(full));
+      const b = evalScore(vill.concat(full));
+      if(a > b) win++; else if(a === b) tie++;
+      n++;
+    }
+    return n > 0 ? (win + 0.5*tie) / n : 0.5;
+  }
+
+  /* レンジ全体の平均エクイティ = レンジ有利かどうか */
+  function rangeAdvantage(heroBits, villBits, board, nHands, nSims){
+    const used = new Set(board.map(c => c.rank + c.suit.sym));
+    let sum = 0, n = 0;
+    for(let i=0;i<nHands;i++){
+      const hero = sampleCombo(heroBits, used, null);
+      if(!hero) continue;
+      sum += equityVsRange(hero, board, villBits, nSims);
+      n++;
+    }
+    return n > 0 ? sum / n : 0.5;
+  }
+
+  return { evalScore, describe, draws, equityVsRange, rangeAdvantage, sampleCombo };
+})();
+
 /* ================= Postflop trainer ================= */
 function makeDeck(){
   const deck = [];
@@ -1198,7 +1395,11 @@ function hasStraightDraw(cards){
 function boardTexture(board){
   const suitCounts = {}; board.forEach(c=> suitCounts[c.suit.key]=(suitCounts[c.suit.key]||0)+1);
   const maxSuit = Math.max(...Object.values(suitCounts));
-  const monotone = maxSuit>=3, twoTone = maxSuit===2, rainbow = maxSuit===1;
+  // 3枚のフロップと5枚のボードで意味が変わるので枚数基準で判定する
+  const monotone = maxSuit === board.length;
+  const flushy   = maxSuit >= 3;              // フラッシュが成立しうる
+  const twoTone  = maxSuit === 2;
+  const rainbow  = maxSuit === 1;
   const rankCounts = {}; board.forEach(c=> rankCounts[c.val]=(rankCounts[c.val]||0)+1);
   const paired = Object.values(rankCounts).some(v=>v>=2);
   const uniq = [...new Set(board.map(c=>c.val))].sort((a,b)=>b-a);
@@ -1206,8 +1407,8 @@ function boardTexture(board){
   const connected = spread<=4;
   const highCard = uniq[0]>=12;
   const lowBoard = uniq[0]<=9;
-  const wet = monotone || connected || (twoTone && !paired);
-  return { monotone, twoTone, rainbow, paired, connected, highCard, lowBoard, wet };
+  const wet2 = flushy || connected || (twoTone && !paired);
+  return { monotone, flushy, twoTone, rainbow, paired, connected, highCard, lowBoard, wet: wet2 };
 }
 function recommendPostflopAction(handCat, hasFD, hasSD, texture, isIP){
   if(handCat.rank>=3) return 'bet';
@@ -1231,18 +1432,48 @@ function sampleFromRange(bits){
   return pool[pool.length-1].cell;
 }
 
-function newPostflopHand(){
-  // プリフロップレイザーのポジションを決め、そのオープンレンジからハンドを配る
-  const ps = POSITION_SETS[settings.tableSize];
-  pf.pos = ps.openOrder[Math.floor(Math.random()*ps.openOrder.length)];
-  const sp = openSpec(pf.pos, settings);
-  pf.rangeBits = sp.bits ? sp.bits : (function(){
-    const a = new Uint8Array(169);
-    ALL_CELLS.forEach(c => { if(c.percentile <= sp.pct) a[GTO.idx[c.notation]] = 1; });
-    return a;
-  })();
-  pf.heroCell = sampleFromRange(pf.rangeBits);
+function bitsFromSpec(sp){
+  if(sp.bits) return sp.bits;
+  const a = new Uint8Array(169);
+  ALL_CELLS.forEach(c => { if(c.percentile <= sp.pct) a[GTO.idx[c.notation]] = 1; });
+  return a;
+}
 
+function newPostflopHand(){
+  const ps = POSITION_SETS[settings.tableSize];
+
+  // ヒーロー = プリフロップレイザー
+  pf.pos = ps.openOrder[Math.floor(Math.random()*ps.openOrder.length)];
+  pf.rangeBits = bitsFromSpec(openSpec(pf.pos, settings));
+
+  // 相手 = そのオープンをコールした後ろのプレイヤー
+  const heroIdx = ps.order.indexOf(pf.pos);
+  const callers = ps.order.filter((p,i) => i > heroIdx);
+  pf.villPos = callers[Math.floor(Math.random()*callers.length)];
+
+  // 相手のコールレンジをスポットエンジンから取得
+  const spot = Spot.build({
+    line:'vsopen', bb:settings.bb, tableSize:settings.tableSize,
+    gameType:settings.gameType, mttStage:settings.mttStage,
+    ante:settings.ante, rake:settings.rake,
+    hero:pf.villPos, villain:pf.pos,
+    openSize:2.5, threeBetSize:9, fourBetSize:20
+  });
+  pf.villBits = new Uint8Array(169);
+  if(spot){
+    ALL_CELLS.forEach(c => {
+      if(spot.action[c.notation] === 'call') pf.villBits[GTO.idx[c.notation]] = 1;
+    });
+  }
+  if(pf.villBits.reduce((a,b)=>a+b,0) === 0){
+    ALL_CELLS.forEach(c => { if(c.percentile <= 0.2) pf.villBits[GTO.idx[c.notation]] = 1; });
+  }
+
+  pf.isIP = isIPPost(pf.pos, pf.villPos, settings.tableSize);
+  pf.potBB = 2.5*2 + 1.5;                       // オープン+コール+ブラインド
+  pf.history = [`${LABELS[pf.pos]} が 2.5BB オープン`, `${LABELS[pf.villPos]} がコール`];
+
+  pf.heroCell = sampleFromRange(pf.rangeBits);
   const pair = randomSuitPair(pf.heroCell);
   pf.hole = pair.map(x => ({ rank:x.rank, val:RANK_VAL[x.rank], suit:x.suit }));
 
@@ -1251,9 +1482,15 @@ function newPostflopHand(){
   pf.board = [deck.pop(), deck.pop(), deck.pop()];
   pf._deck = deck;
   pf.street = 'flop';
-  pf.isIP = Math.random()<0.5;
   pf.answered = false;
   renderPostflopStreet();
+}
+
+/* ポストフロップの行動順(SB→BB→UTG…→BTN) */
+function isIPPost(a, b, tableSize){
+  const pre = POSITION_SETS[tableSize].order;
+  const ord = pre.filter(p=>p==='SB'||p==='BB').concat(pre.filter(p=>p!=='SB'&&p!=='BB'));
+  return ord.indexOf(a) > ord.indexOf(b);
 }
 function advancePostflopStreet(){
   if(pf.street==='flop'){ pf.board.push(pf._deck.pop()); pf.street='turn'; }
@@ -1264,38 +1501,40 @@ function advancePostflopStreet(){
 function renderPostflopStreet(){
   document.getElementById('pfStreetLabel').textContent = {flop:'FLOP',turn:'TURN',river:'RIVER'}[pf.street];
   document.getElementById('pfStatScore').textContent = `${pf.score}/${pf.total}`;
+
+  const villActs = pf.isIP ? `${LABELS[pf.villPos]} がチェック` : null;
   document.getElementById('pfPositionLine').innerHTML =
-    `プリフロップレイザー <span class="pos-badge">${LABELS[pf.pos]||''}</span> ` +
-    `<span class="pos-badge opener">${pf.isIP?'IP':'OOP'}</span>`;
+    `<span class="pos-badge">${LABELS[pf.pos]}</span> あなた(${pf.isIP?'IP':'OOP'}) ` +
+    `vs <span class="pos-badge opener">${LABELS[pf.villPos]}</span>`;
 
   renderCards(pf.hole.map(c=>({rank:c.rank, suit:c.suit})), 'pfHoleWrap', true);
   renderCards(pf.board.map(c=>({rank:c.rank, suit:c.suit})), 'pfBoardWrap', true);
 
-  const allCards = [...pf.hole, ...pf.board];
-  const cat = bestHandCategory(allCards);
-  const fd = hasFlushDraw(allCards), sd = hasStraightDraw(allCards);
+  const desc = PF.describe(pf.hole, pf.board);
+  const dr = PF.draws(pf.hole, pf.board);
   const texture = boardTexture(pf.board);
+  pf._desc = desc; pf._draws = dr; pf._texture = texture;
 
-  const tags = document.getElementById('pfTags');
-  const t = [];
-  t.push(`<span class="texture-tag strength">${cat.label}</span>`);
-  if(fd) t.push(`<span class="texture-tag">フラッシュドロー</span>`);
-  if(sd) t.push(`<span class="texture-tag">ストレートドロー</span>`);
-  t.push(`<span class="texture-tag">${texture.monotone?'モノトーン':texture.twoTone?'ツートーン':'レインボー'}</span>`);
+  const t = [`<span class="texture-tag strength">${desc.label}</span>`];
+  if(dr.fd) t.push(`<span class="texture-tag">フラッシュドロー</span>`);
+  if(dr.oesd) t.push(`<span class="texture-tag">オープンエンド</span>`);
+  else if(dr.gutshot) t.push(`<span class="texture-tag">ガットショット</span>`);
+  t.push(`<span class="texture-tag">${texture.monotone?'モノトーン':texture.flushy?'フラッシュ可能':texture.twoTone?'ツートーン':'レインボー'}</span>`);
   if(texture.paired) t.push(`<span class="texture-tag">ペアボード</span>`);
-  if(texture.connected) t.push(`<span class="texture-tag">connected</span>`);
-  t.push(`<span class="texture-tag">${texture.highCard?'ハイボード':texture.lowBoard?'ローボード':'ミドルボード'}</span>`);
-  tags.innerHTML = t.join('');
+  document.getElementById('pfTags').innerHTML = t.join('');
 
   const streetLabel = {flop:'フロップ', turn:'ターン', river:'リバー'}[pf.street];
-  document.getElementById('pfQuestion').innerHTML = `${streetLabel}です。${pf.isIP?'あなたはポジションあり':'あなたはポジションなし'}。<b>ベット</b>しますか、<b>チェック</b>しますか?`;
+  const lineTxt = pf.history.join(' → ') + (villActs ? ` → ${streetLabel}: ${villActs}` : ` → ${streetLabel}`);
+  document.getElementById('pfQuestion').innerHTML =
+    `<span style="font-size:12px;color:var(--cream-dim);display:block;margin-bottom:8px;">${lineTxt}</span>` +
+    `ポット ${pf.potBB.toFixed(1)}BB。<b>ベット</b>(2/3ポット)しますか、<b>チェック</b>しますか?`;
 
   const actWrap = document.getElementById('pfActions');
   actWrap.innerHTML = '';
   [{key:'bet',label:'ベット',cls:'bet'},{key:'check',label:'チェック',cls:'check'}].forEach(b=>{
     const btn = document.createElement('button');
     btn.className = 'chip-btn ' + b.cls; btn.textContent = b.label;
-    btn.addEventListener('click', ()=>submitPostflopAnswer(b.key, cat, fd, sd, texture));
+    btn.addEventListener('click', ()=>submitPostflopAnswer(b.key));
     actWrap.appendChild(btn);
   });
 
@@ -1303,34 +1542,79 @@ function renderPostflopStreet(){
   document.getElementById('pfNextStreet').className = 'next-btn';
   document.getElementById('pfNextHand').className = 'next-btn';
   document.getElementById('btnPfRange').className = 'range-toggle';
-  document.getElementById('btnPfRange').textContent = '自分のレンジ全体を見る';
+  document.getElementById('btnPfRange').textContent = '自分と相手のレンジを見る';
   document.getElementById('pfRangePanel').className = 'range-panel';
 }
-function submitPostflopAnswer(userAction, cat, fd, sd, texture){
+
+/* 自分のハンドのエクイティとレンジ有利から推奨アクションを出す */
+function postflopRecommend(){
+  const eq  = PF.equityVsRange(pf.hole, pf.board, pf.villBits, 700);
+  const adv = PF.rangeAdvantage(pf.rangeBits, pf.villBits, pf.board, 18, 130);
+  const dr  = pf._draws, desc = pf._desc;
+
+  const betFrac = 2/3;
+  // 相手が降りる必要のある頻度 = ベット額 /(ポット + ベット額)
+  const foldNeeded = betFrac / (1 + betFrac);
+
+  let action, why;
+  if(eq >= 0.66){
+    action = 'bet';
+    why = `相手のコールレンジに対してエクイティ ${(eq*100).toFixed(0)}% と優位なので、バリューを取りに行きます。`;
+  } else if(dr.fd || dr.oesd){
+    action = 'bet';
+    why = `完成はしていませんが強いドローがあり、フォールドエクイティ(${(foldNeeded*100).toFixed(0)}%降りれば単体で利益)と合わせてセミブラフが成立します。`;
+  } else if(eq >= 0.55 && (pf.isIP || !pf._texture.wet)){
+    action = 'bet';
+    why = `エクイティ ${(eq*100).toFixed(0)}% で有利です。${pf.isIP?'IPなので':'ボードがドライなので'}薄めのバリューでもベットできます。`;
+  } else if(eq < 0.45 && adv >= 0.54 && pf.isIP && desc.tier <= 1){
+    action = 'bet';
+    why = `自分のハンドは弱い(${(eq*100).toFixed(0)}%)ですが、レンジ全体の平均エクイティが ${(adv*100).toFixed(0)}% とレンジ有利なので、IPからブラフを混ぜられます。`;
+  } else if(eq >= 0.50 && eq < 0.55){
+    action = 'check';
+    why = `エクイティ ${(eq*100).toFixed(0)}% とほぼ互角です。ベットすると強いハンドにしかコールされないため、チェックしてポットを小さく保ちます。`;
+  } else {
+    action = 'check';
+    why = `エクイティ ${(eq*100).toFixed(0)}%${adv < 0.52 ? `・レンジ平均も ${(adv*100).toFixed(0)}% で優位がありません` : ''}。ドローもないためチェックが無難です。`;
+  }
+  return { action, eq, adv, why, foldNeeded };
+}
+
+function submitPostflopAnswer(userAction){
   if(pf.answered) return;
   pf.answered = true; pf.total++;
-  const correct = recommendPostflopAction(cat, fd, sd, texture, pf.isIP);
-  const isCorrect = userAction===correct;
+
+  const rec = postflopRecommend();
+  pf._rec = rec;
+  const isCorrect = userAction === rec.action;
   if(isCorrect) pf.score++;
   document.getElementById('pfStatScore').textContent = `${pf.score}/${pf.total}`;
 
   const fb = document.getElementById('pfFeedback');
   fb.className = 'feedback show ' + (isCorrect?'correct':'wrong');
   document.getElementById('pfFbTitle').textContent = isCorrect ? '正解!' : '不正解';
-  let reason;
-  if(cat.rank>=3) reason = '強い完成役なので価値を稼ぎにいくのが基本です。';
-  else if(cat.rank>=1) reason = texture.wet && !pf.isIP ? 'ウェットなボードでOOPなので、相手にレイズされやすくチェック寄りが無難です。' : 'この程度のメイドハンドなら、ドライ寄りのボードやIPではベットして主導権を握れます。';
-  else if(fd||sd) reason = (pf.isIP || !texture.wet) ? 'ハンド自体は弱くても、ドローがあるのでセミブラフでベットする価値があります。' : 'ドローはありますが、ウェットなボードでOOPなのでチェックして様子を見るのが無難です。';
-  else reason = 'ハンドに強みがなく、相手のレンジに押し負けやすいのでチェックが基本です。';
-  document.getElementById('pfFbBody').textContent = `${actionLabel(correct)}が目安です。${reason}(簡易ヒューリスティックによる概念practiceです)`;
+  document.getElementById('pfFbBody').innerHTML =
+    `<b>${actionLabel(rec.action)}</b>が目安です。${rec.why}` +
+    `<div class="eq-line">あなた: ${pf._desc.label} ・ エクイティ <b>${(rec.eq*100).toFixed(1)}%</b><br>` +
+    `${LABELS[pf.villPos]} のレンジ ${(GTO.pctOf(pf.villBits)*100).toFixed(0)}% ・ ` +
+    `自分のレンジ平均エクイティ <b>${(rec.adv*100).toFixed(1)}%</b>` +
+    `${rec.adv>=0.54?'(レンジ有利)':rec.adv<=0.46?'(レンジ不利)':'(互角)'}</div>`;
 
   document.querySelectorAll('#pfActions .chip-btn').forEach(b=>b.disabled=true);
   document.getElementById('btnPfRange').className = 'range-toggle show';
+
+  // 次のストリートに向けてポットとアクション履歴を更新
+  const st = {flop:'フロップ', turn:'ターン', river:'リバー'}[pf.street];
+  if(userAction === 'bet'){ pf.history.push(`${st}: あなたがベット、相手がコール`); pf.potBB *= (1 + 2*(2/3)); }
+  else { pf.history.push(`${st}: 両者チェック`); }
+
   if(pf.street==='river'){ document.getElementById('pfNextHand').className='next-btn primary show'; }
   else { document.getElementById('pfNextStreet').className='next-btn primary show'; document.getElementById('pfNextHand').className='next-btn show'; }
 
-  pushHistory({ module:'postflop', scenario:pf.street, pos: pf.isIP?'IP':'OOP', opener:null, handNotation: `${pf.hole.map(c=>c.rank+c.suit.sym).join('')}`, userAction, correctAction:correct, isCorrect });
+  pushHistory({ module:'postflop', scenario:pf.street, pos: pf.pos, opener:pf.villPos,
+                handNotation: pf.hole.map(c=>c.rank+c.suit.sym).join(''),
+                userAction, correctAction:rec.action, isCorrect });
 }
+
 document.getElementById('pfNextStreet').addEventListener('click', advancePostflopStreet);
 document.getElementById('pfNextHand').addEventListener('click', newPostflopHand);
 
@@ -2093,58 +2377,66 @@ function representativeCombo(cell, usedCards){
 }
 
 function renderPfRange(){
-  const bits = pf.rangeBits;
   const grid = document.getElementById('pfRangeGrid');
   grid.innerHTML = '';
   const board = pf.board.map(c => ({ rank:c.rank, val:c.val, suit:c.suit }));
   const sum = { strong:0, pair:0, draw:0, air:0 };
   const heroNotation = pf.heroCell ? pf.heroCell.notation : null;
+  const bits = pfRangeMode === 'hero' ? pf.rangeBits : pf.villBits;
 
   for(let i=0;i<13;i++) for(let j=0;j<13;j++){
     const c = ALL_CELLS.find(x => x.row===i && x.col===j);
     const div = document.createElement('div');
     div.textContent = c.notation;
     const gi = GTO.idx[c.notation];
-    if(!bits || !bits[gi]){
-      div.className = 'cell out';
-      grid.appendChild(div);
-      continue;
-    }
+    if(!bits || !bits[gi]){ div.className = 'cell out'; grid.appendChild(div); continue; }
+
     const combo = representativeCombo(c, board);
     let cat = 'air';
     if(combo){
-      const cards = combo.map(x => ({ rank:x.rank, val:RANK_VAL[x.rank], suit:x.suit })).concat(board);
-      const made = bestHandCategory(cards);
-      const fd = hasFlushDraw(cards), sd = hasStraightDraw(cards);
-      if(made.rank >= 2)      cat = 'strong';
-      else if(made.rank === 1) cat = 'pair';
-      else if(fd || sd)        cat = 'draw';
-      else                     cat = 'air';
+      const cards = combo.map(x => ({ rank:x.rank, val:RANK_VAL[x.rank], suit:x.suit }));
+      const d  = PF.describe(cards, board);
+      const dr = PF.draws(cards, board);
+      if(d.tier >= 4)      cat = 'strong';   // トップペア以上
+      else if(d.tier >= 2) cat = 'pair';     // セカンド〜ローペア
+      else if(dr.fd || dr.oesd) cat = 'draw';
+      else cat = 'air';
     }
     sum[cat] += GTO.combos[gi];
-    div.className = 'cell cat-' + cat + (c.notation===heroNotation ? ' hero' : '');
+    div.className = 'cell cat-' + cat +
+      (pfRangeMode==='hero' && c.notation===heroNotation ? ' hero' : '');
     grid.appendChild(div);
   }
 
   const tot = sum.strong + sum.pair + sum.draw + sum.air || 1;
-  const bar = document.getElementById('pfRangeFreq');
-  bar.innerHTML =
-    `<div class="freq-seg raise" style="flex:${sum.strong/tot}">2ペア+ ${(sum.strong/tot*100).toFixed(0)}%</div>` +
-    `<div class="freq-seg call"  style="flex:${sum.pair/tot}">1ペア ${(sum.pair/tot*100).toFixed(0)}%</div>` +
+  document.getElementById('pfRangeFreq').innerHTML =
+    `<div class="freq-seg raise" style="flex:${sum.strong/tot}">トップペア+ ${(sum.strong/tot*100).toFixed(0)}%</div>` +
+    `<div class="freq-seg call"  style="flex:${sum.pair/tot}">弱いペア ${(sum.pair/tot*100).toFixed(0)}%</div>` +
     `<div class="freq-seg" style="flex:${sum.draw/tot};background:#5a7f9e;color:#08161f">ドロー ${(sum.draw/tot*100).toFixed(0)}%</div>` +
     `<div class="freq-seg fold"  style="flex:${sum.air/tot}">ノーヒット ${(sum.air/tot*100).toFixed(0)}%</div>`;
 
   const boardTxt = pf.board.map(c => c.rank + c.suit.sym).join(' ');
+  const who = pfRangeMode==='hero' ? `${LABELS[pf.pos]}(あなた)のオープンレンジ`
+                                   : `${LABELS[pf.villPos]}(相手)のコールレンジ`;
   document.getElementById('pfRangeNote').innerHTML =
-    `${LABELS[pf.pos]} のオープンレンジが <b>${boardTxt}</b> にどう当たっているか。` +
-    ` 各ハンドはボードと衝突しない代表的なスート組み合わせで判定しています。白枠が今のハンドです。`;
+    `<div style="display:flex;gap:6px;margin-bottom:8px;">` +
+    `<span class="pos-chip${pfRangeMode==='hero'?' active':''}" id="pfRangeHeroBtn">自分のレンジ</span>` +
+    `<span class="pos-chip${pfRangeMode==='vill'?' active':''}" id="pfRangeVillBtn">相手のレンジ</span></div>` +
+    `${who} が <b>${boardTxt}</b> にどう当たっているか。ボードだけで出来ているペアは自分のペアとして数えていません。`;
+
   document.getElementById('pfRangeLegend').innerHTML =
-    `<span><i class="swatch" style="background:var(--gold-bright);"></i>2ペア以上</span>` +
-    `<span><i class="swatch" style="background:var(--teal);"></i>1ペア</span>` +
+    `<span><i class="swatch" style="background:var(--gold-bright);"></i>トップペア以上</span>` +
+    `<span><i class="swatch" style="background:var(--teal);"></i>弱いペア</span>` +
     `<span><i class="swatch" style="background:#5a7f9e;"></i>ドローのみ</span>` +
     `<span><i class="swatch" style="background:rgba(255,255,255,0.05); border:1px solid var(--line);"></i>ノーヒット</span>` +
     `<span><i class="swatch" style="background:rgba(255,255,255,0.02);"></i>レンジ外</span>`;
+
+  const hb = document.getElementById('pfRangeHeroBtn'), vb = document.getElementById('pfRangeVillBtn');
+  if(hb) hb.addEventListener('click', ()=>{ pfRangeMode='hero'; renderPfRange(); });
+  if(vb) vb.addEventListener('click', ()=>{ pfRangeMode='vill'; renderPfRange(); });
 }
+
+let pfRangeMode = 'hero';
 
 document.getElementById('btnPfRange').addEventListener('click', ()=>{
   const p = document.getElementById('pfRangePanel');
@@ -2155,6 +2447,402 @@ document.getElementById('btnPfRange').addEventListener('click', ()=>{
     open ? 'レンジ表を閉じる' : '自分のレンジ全体を見る';
 });
 
+/* ================= 通し練習(プリフロップ〜リバー) ================= */
+let FullHand = null;
+
+function fhBitsOfAction(spot, act){
+  const a = new Uint8Array(169);
+  if(!spot) return a;
+  ALL_CELLS.forEach(c => { if(spot.action[c.notation] === act) a[GTO.idx[c.notation]] = 1; });
+  return a;
+}
+function fhSpot(line, hero, villain){
+  return Spot.build({
+    line, bb:settings.bb, tableSize:settings.tableSize,
+    gameType:settings.gameType, mttStage:settings.mttStage,
+    ante:settings.ante, rake:settings.rake,
+    hero, villain, openSize:2.5, threeBetSize:9, fourBetSize:20
+  });
+}
+function fhCards(pairArr){
+  return pairArr.map(x => ({ rank:x.rank, val:RANK_VAL[x.rank], suit:x.suit }));
+}
+function fhKey(c){ return c.rank + c.suit.sym; }
+
+function fhStart(){
+  const ps = POSITION_SETS[settings.tableSize];
+  const pos = ps.openOrder[Math.floor(Math.random()*ps.openOrder.length)];
+  const heroIdx = ps.order.indexOf(pos);
+  const after = ps.order.filter((p,i) => i > heroIdx);
+  const villPos = after[Math.floor(Math.random()*after.length)];
+
+  const heroBits = bitsFromSpec(openSpec(pos, settings));
+  const heroCell = sampleFromRange(heroBits);
+  const hole = fhCards(randomSuitPair(heroCell));
+
+  const used = new Set(hole.map(fhKey));
+  const deck = makeDeck().filter(c => !used.has(fhKey(c)));
+
+  FullHand = {
+    pos, villPos, heroCell, hole, deck,
+    heroBits, villBits:null, villHole:null,
+    board: [], street:'preflop', phase:'rfi',
+    pot: 1.5 + anteTotal(settings), toCall: 0, betSize: 0,
+    isIP: isIPPost(pos, villPos, settings.tableSize),
+    history: [], decisions: [], ended:false, result:''
+  };
+  fhRender();
+}
+
+/* ---- 相手の意思決定 ---- */
+function fhVillainPreflop(){
+  const F = FullHand;
+  const spot = fhSpot('vsopen', F.villPos, F.pos);
+  // 相手のハンドはランダムに配られ、自分のレンジ戦略に従って
+  // フォールド / コール / 3ベット を選ぶ(降りることもある)
+  const used = new Set(F.hole.map(fhKey));
+  let cards = null, cell = null;
+  for(let i=0;i<80 && !cards;i++){
+    const cand2 = weightedRandomCell();
+    const cand = fhCards(randomSuitPair(cand2));
+    if(!used.has(fhKey(cand[0])) && !used.has(fhKey(cand[1]))){ cards = cand; cell = cand2; }
+  }
+  if(!cards){ cell = weightedRandomCell(); cards = fhCards(randomSuitPair(cell)); }
+  F.villCell = cell;
+  F.villHole = cards;
+  const a = spot ? (spot.action[cell.notation] || 'fold') : 'fold';
+  const act = a === 'raise' ? '3bet' : a;
+  // 相手のカードをデッキから除く
+  const vk = new Set(F.villHole.map(fhKey));
+  F.deck = F.deck.filter(c => !vk.has(fhKey(c)));
+  return act;
+}
+function fhVillainPostflop(facingBet){
+  const F = FullHand;
+  const eq = PF.equityVsRange(F.villHole, F.board, F.heroBits, 400);
+  if(facingBet){
+    const req = F.betSize / (F.pot + 2*F.betSize);
+    if(eq >= 0.78) return 'raise';
+    return eq >= req + 0.04 ? 'call' : 'fold';
+  }
+  const dr = PF.draws(F.villHole, F.board);
+  if(eq >= 0.65 || dr.fd || dr.oesd) return 'bet';
+  return 'check';
+}
+
+/* ---- ヒーローの推奨アクション ---- */
+function fhRecommend(){
+  const F = FullHand;
+  if(F.phase === 'rfi'){
+    const inR = inOpenRange(F.heroCell, F.pos);
+    return { action: inR ? 'raise' : 'fold',
+             why: inR ? `${LABELS[F.pos]} のオープンレンジに入っています。`
+                      : `${LABELS[F.pos]} のオープンレンジ(${(openSpec(F.pos,settings).pct*100).toFixed(0)}%)には入りません。` };
+  }
+  if(F.phase === 'vs3bet'){
+    const spot = fhSpot('vs3bet', F.pos, F.villPos);
+    const act = spot ? (spot.action[F.heroCell.notation] || 'fold') : 'fold';
+    const hh = spot && spot.hands.find(x => x.notation === F.heroCell.notation);
+    return { action: act,
+             why: hh ? `相手の3ベットレンジに対するエクイティ ${(hh.eq*100).toFixed(0)}%(コールに必要 ${(spot.meta.reqEq*100).toFixed(0)}%)。`
+                     : 'このハンドはオープンレンジ外です。' };
+  }
+  // ポストフロップ
+  const eq  = PF.equityVsRange(F.hole, F.board, F.villBits, 600);
+  const adv = PF.rangeAdvantage(F.heroBits, F.villBits, F.board, 14, 110);
+  const dr  = PF.draws(F.hole, F.board);
+  const d   = PF.describe(F.hole, F.board);
+
+  if(F.phase === 'facingBet'){
+    const req = F.betSize / (F.pot + 2*F.betSize);
+    let action, why;
+    if(eq >= 0.72){ action='raise'; why=`エクイティ ${(eq*100).toFixed(0)}% と大きく優位なのでバリューレイズです。`; }
+    else if(eq >= req + 0.03){ action='call'; why=`必要エクイティ ${(req*100).toFixed(0)}% に対して ${(eq*100).toFixed(0)}% あるのでコールできます。`; }
+    else if((dr.fd || dr.oesd) && eq >= req - 0.05){ action='call'; why=`エクイティは ${(eq*100).toFixed(0)}% ですが強いドローがあり、改善の見込みでコールが成立します。`; }
+    else { action='fold'; why=`必要エクイティ ${(req*100).toFixed(0)}% に対して ${(eq*100).toFixed(0)}% しかありません。`; }
+    return { action, why, eq, adv, d };
+  }
+  // チェックされた・自分が先に動く
+  let action, why;
+  if(eq >= 0.66){ action='bet'; why=`エクイティ ${(eq*100).toFixed(0)}% で優位なのでバリューベットです。`; }
+  else if(dr.fd || dr.oesd){ action='bet'; why=`強いドローがあるのでセミブラフでベットします。`; }
+  else if(eq >= 0.55 && (F.isIP || !boardTexture(F.board).wet)){ action='bet'; why=`エクイティ ${(eq*100).toFixed(0)}% で有利。${F.isIP?'IPなので':'ドライボードなので'}薄めのバリューも取れます。`; }
+  else if(eq < 0.45 && adv >= 0.54 && F.isIP && d.tier <= 1){ action='bet'; why=`ハンドは弱い(${(eq*100).toFixed(0)}%)ですが、レンジ平均 ${(adv*100).toFixed(0)}% でレンジ有利。IPからブラフを混ぜます。`; }
+  else { action='check'; why=`エクイティ ${(eq*100).toFixed(0)}%・レンジ平均 ${(adv*100).toFixed(0)}%。優位もドローもないためチェックです。`; }
+  return { action, why, eq, adv, d };
+}
+
+/* ---- ヒーローの選択を処理 ---- */
+function fhAct(userAction){
+  const F = FullHand;
+  if(F.ended || F._answered) return;
+  const rec = fhRecommend();
+  const ok = userAction === rec.action;
+  F.decisions.push({
+    street: F.street, phase: F.phase, user: userAction,
+    correct: rec.action, ok, why: rec.why,
+    hand: F.heroCell.notation,
+    board: F.board.map(c => c.rank + c.suit.sym).join(' ')
+  });
+  F._answered = true;
+  F._lastRec = rec;
+  F._lastUser = userAction;
+  fhRender();
+}
+
+/* 「次へ」でゲームを進める */
+function fhAdvance(){
+  const F = FullHand;
+  F._answered = false;
+  const user = F._lastUser;
+  const st = {preflop:'プリフロップ', flop:'フロップ', turn:'ターン', river:'リバー'}[F.street];
+
+  if(F.phase === 'rfi'){
+    if(user === 'fold'){ return fhEnd(`${LABELS[F.pos]} からフォールドしました。`); }
+    F.pot += 2.5; F.history.push(`${LABELS[F.pos]}(あなた)が 2.5BB オープン`);
+    const va = fhVillainPreflop();
+    if(va === 'fold'){ return fhEnd(`${LABELS[F.villPos]} がフォールド。ポット ${F.pot.toFixed(1)}BB を獲得しました。`); }
+    if(va === '3bet'){
+      F.pot += 9; F.history.push(`${LABELS[F.villPos]} が 9BB に3ベット`);
+      F.phase = 'vs3bet'; return fhRender();
+    }
+    F.pot += 2.5; F.history.push(`${LABELS[F.villPos]} がコール`);
+    return fhToFlop(fhSpot('vsopen', F.villPos, F.pos), 'call');
+  }
+
+  if(F.phase === 'vs3bet'){
+    if(user === 'fold') return fhEnd(`3ベットに対してフォールドしました。`);
+    if(user === '3bet' || user === 'raise' || user === '4bet'){
+      F.pot += 20 - 2.5; F.history.push(`あなたが 20BB に4ベット`);
+      return fhEnd(`${LABELS[F.villPos]} がフォールド。ポット ${F.pot.toFixed(1)}BB を獲得しました。`);
+    }
+    F.pot += 9 - 2.5; F.history.push(`あなたがコール`);
+    return fhToFlop(fhSpot('vsopen', F.villPos, F.pos), '3bet');
+  }
+
+  // --- ポストフロップ ---
+  if(F.phase === 'facingBet'){
+    if(user === 'fold') return fhEnd(`${st}でフォールドしました。`);
+    if(user === 'raise'){
+      F.pot += F.betSize*3; F.history.push(`${st}: 相手ベット → あなたがレイズ、相手フォールド`);
+      return fhEnd(`ポット ${F.pot.toFixed(1)}BB を獲得しました。`);
+    }
+    F.pot += F.betSize; F.history.push(`${st}: 相手ベット → あなたがコール`);
+    return fhNextStreet();
+  }
+
+  // 自分から動く場面
+  if(user === 'bet'){
+    F.betSize = F.pot * (2/3);
+    const va = fhVillainPostflop(true);
+    if(va === 'fold'){
+      F.pot += F.betSize;
+      F.history.push(`${st}: あなたがベット、相手フォールド`);
+      return fhEnd(`ポット ${F.pot.toFixed(1)}BB を獲得しました。`);
+    }
+    if(va === 'raise'){
+      F.pot += F.betSize*3;
+      F.history.push(`${st}: あなたがベット、相手がレイズ`);
+      F.betSize = F.pot * 0.5;
+      F.phase = 'facingBet'; return fhRender();
+    }
+    F.pot += F.betSize*2;
+    F.history.push(`${st}: あなたがベット、相手コール`);
+    return fhNextStreet();
+  }
+
+  // チェックした
+  if(F.isIP){
+    F.history.push(`${st}: 両者チェック`);
+    return fhNextStreet();
+  }
+  const va = fhVillainPostflop(false);
+  if(va === 'bet'){
+    F.betSize = F.pot * (2/3);
+    F.history.push(`${st}: あなたチェック → 相手が ${F.betSize.toFixed(1)}BB ベット`);
+    F.phase = 'facingBet'; return fhRender();
+  }
+  F.history.push(`${st}: 両者チェック`);
+  return fhNextStreet();
+}
+
+function fhToFlop(spot, villAct){
+  const F = FullHand;
+  F.villBits = fhBitsOfAction(spot, villAct === '3bet' ? 'raise' : 'call');
+  if(F.villBits.reduce((a,b)=>a+b,0) === 0)
+    ALL_CELLS.forEach(c => { if(c.percentile <= 0.2) F.villBits[GTO.idx[c.notation]] = 1; });
+  F.board = [F.deck.pop(), F.deck.pop(), F.deck.pop()];
+  F.street = 'flop';
+  F.phase = 'act';
+  fhStreetOpen();
+}
+
+function fhNextStreet(){
+  const F = FullHand;
+  if(F.street === 'river') return fhShowdown();
+  F.street = F.street === 'flop' ? 'turn' : 'river';
+  F.board.push(F.deck.pop());
+  F.betSize = 0;
+  F.phase = 'act';
+  fhStreetOpen();
+}
+
+/* IPなら相手が先に動く */
+function fhStreetOpen(){
+  const F = FullHand;
+  if(F.isIP){
+    const va = fhVillainPostflop(false);
+    const st = {flop:'フロップ', turn:'ターン', river:'リバー'}[F.street];
+    if(va === 'bet'){
+      F.betSize = F.pot * (2/3);
+      F.history.push(`${st}: 相手が ${F.betSize.toFixed(1)}BB ベット`);
+      F.phase = 'facingBet';
+    } else {
+      F.history.push(`${st}: 相手がチェック`);
+      F.phase = 'act';
+    }
+  }
+  fhRender();
+}
+
+function fhShowdown(){
+  const F = FullHand;
+  const a = PF.evalScore(F.hole.concat(F.board));
+  const b = PF.evalScore(F.villHole.concat(F.board));
+  const mine = PF.describe(F.hole, F.board).label;
+  const theirs = PF.describe(F.villHole, F.board).label;
+  const vh = F.villHole.map(c => c.rank + c.suit.sym).join(' ');
+  const res = a > b ? `勝ち` : a < b ? `負け` : `引き分け`;
+  fhEnd(`ショーダウン: あなた ${mine} vs 相手 ${vh}(${theirs}) → <b>${res}</b>`);
+}
+
+function fhEnd(msg){
+  const F = FullHand;
+  F.ended = true; F.result = msg;
+  const ok = F.decisions.filter(d => d.ok).length;
+  fhSession.hands++;
+  fhSession.correct += ok;
+  fhSession.total += F.decisions.length;
+  saveAll();
+  fhRender();
+}
+
+let fhSession = { hands:0, correct:0, total:0 };
+
+/* ---- 通し練習のUI ---- */
+function fhActionButtons(){
+  const F = FullHand;
+  if(F.phase === 'rfi') return [{k:'raise',l:'オープン',c:'raise'},{k:'fold',l:'フォールド',c:'fold'}];
+  if(F.phase === 'vs3bet') return [{k:'raise',l:'4ベット',c:'threebet'},{k:'call',l:'コール',c:'call'},{k:'fold',l:'フォールド',c:'fold'}];
+  if(F.phase === 'facingBet') return [{k:'raise',l:'レイズ',c:'raise'},{k:'call',l:'コール',c:'call'},{k:'fold',l:'フォールド',c:'fold'}];
+  return [{k:'bet',l:'ベット',c:'bet'},{k:'check',l:'チェック',c:'check'}];
+}
+
+function fhRender(){
+  const F = FullHand;
+  if(!F) return;
+
+  const acc = fhSession.total ? Math.round(fhSession.correct/fhSession.total*100) : 0;
+  document.getElementById('fhSession').innerHTML =
+    `<div class="rs-box"><b>${fhSession.hands}</b><small>ハンド</small></div>` +
+    `<div class="rs-box"><b>${fhSession.correct}/${fhSession.total}</b><small>正答</small></div>` +
+    `<div class="rs-box"><b>${acc}%</b><small>正答率</small></div>`;
+
+  document.getElementById('fhPositionLine').innerHTML =
+    `<span class="pos-badge">${LABELS[F.pos]}</span> あなた(${F.isIP?'IP':'OOP'}) ` +
+    `vs <span class="pos-badge opener">${LABELS[F.villPos]}</span> ・ ポット ${F.pot.toFixed(1)}BB`;
+
+  renderCards(F.hole.map(c=>({rank:c.rank, suit:c.suit})), 'fhHoleWrap', true);
+  if(F.board.length) renderCards(F.board.map(c=>({rank:c.rank, suit:c.suit})), 'fhBoardWrap', true);
+  else document.getElementById('fhBoardWrap').innerHTML = '';
+
+  document.getElementById('fhHistory').innerHTML =
+    F.history.length ? F.history.map(x=>`・${x}`).join('<br>') : '・フォールドで回ってきました';
+
+  const tagEl = document.getElementById('fhTags');
+  if(F.board.length){
+    const d = PF.describe(F.hole, F.board), dr = PF.draws(F.hole, F.board), tx = boardTexture(F.board);
+    const t = [`<span class="texture-tag strength">${d.label}</span>`];
+    if(dr.fd) t.push(`<span class="texture-tag">フラッシュドロー</span>`);
+    if(dr.oesd) t.push(`<span class="texture-tag">オープンエンド</span>`);
+    else if(dr.gutshot) t.push(`<span class="texture-tag">ガットショット</span>`);
+    t.push(`<span class="texture-tag">${tx.monotone?'モノトーン':tx.flushy?'フラッシュ可能':tx.twoTone?'ツートーン':'レインボー'}</span>`);
+    if(tx.paired) t.push(`<span class="texture-tag">ペアボード</span>`);
+    tagEl.innerHTML = t.join('');
+  } else tagEl.innerHTML = '';
+
+  const actWrap = document.getElementById('fhActions');
+  const fb = document.getElementById('fhFeedback');
+  const nextBtn = document.getElementById('fhNext');
+  const newBtn = document.getElementById('fhNewHand');
+  const summary = document.getElementById('fhSummary');
+
+  if(F.ended){
+    actWrap.innerHTML = '';
+    document.getElementById('fhQuestion').innerHTML = '';
+    fb.className = 'feedback';
+    nextBtn.className = 'next-btn';
+    newBtn.className = 'next-btn primary show';
+    const ok = F.decisions.filter(d=>d.ok).length;
+    const rows = F.decisions.map(d=>{
+      const st = {preflop:'プリフロップ', flop:'フロップ', turn:'ターン', river:'リバー'}[d.street];
+      return `<div class="hist-item ${d.ok?'':'wrong'}">
+        <div class="hist-top"><span>${st}${d.board?' ('+d.board+')':''}</span>
+        <span class="hist-badge ${d.ok?'correct':'wrong'}">${d.ok?'正解':'不正解'}</span></div>
+        <div>あなた: ${actionLabel(d.user)} / 目安: ${actionLabel(d.correct)}</div>
+        <div style="color:var(--cream-dim);margin-top:3px;">${d.why}</div>
+      </div>`;
+    }).join('');
+    summary.innerHTML =
+      `<div class="spot-title">${F.result}</div>` +
+      `<div class="freq-bar"><div class="freq-seg raise" style="flex:${ok||0.001}">正解 ${ok}</div>` +
+      `<div class="freq-seg fold" style="flex:${F.decisions.length-ok||0.001}">不正解 ${F.decisions.length-ok}</div></div>` +
+      rows;
+    summary.className = 'range-panel show';
+    return;
+  }
+
+  summary.className = 'range-panel';
+  const stLabel = {preflop:'プリフロップ', flop:'フロップ', turn:'ターン', river:'リバー'}[F.street];
+  let q;
+  if(F.phase === 'rfi') q = `フォールドで回ってきました。<b>${LABELS[F.pos]}</b> からオープンしますか?`;
+  else if(F.phase === 'vs3bet') q = `${LABELS[F.villPos]} が 9BB に3ベット。どうしますか?`;
+  else if(F.phase === 'facingBet') q = `${stLabel}: 相手が <b>${F.betSize.toFixed(1)}BB</b> ベット(ポット ${F.pot.toFixed(1)}BB)。どうしますか?`;
+  else q = `${stLabel}: あなたの番です。<b>ベット</b>(2/3ポット)しますか、<b>チェック</b>しますか?`;
+  document.getElementById('fhQuestion').innerHTML = q;
+
+  if(F._answered){
+    const rec = F._lastRec, ok = F._lastUser === rec.action;
+    actWrap.innerHTML = '';
+    fb.className = 'feedback show ' + (ok?'correct':'wrong');
+    document.getElementById('fhFbTitle').textContent = ok ? '正解!' : '不正解';
+    let body = `<b>${actionLabel(rec.action)}</b>が目安です。${rec.why}`;
+    if(rec.eq !== undefined){
+      body += `<div class="eq-line">エクイティ <b>${(rec.eq*100).toFixed(1)}%</b>` +
+              (rec.adv!==undefined ? ` ・ 自分のレンジ平均 <b>${(rec.adv*100).toFixed(1)}%</b>` : '') + `</div>`;
+    }
+    document.getElementById('fhFbBody').innerHTML = body;
+    nextBtn.className = 'next-btn primary show';
+    newBtn.className = 'next-btn';
+  } else {
+    fb.className = 'feedback';
+    nextBtn.className = 'next-btn';
+    newBtn.className = 'next-btn';
+    actWrap.innerHTML = '';
+    const btns = fhActionButtons();
+    actWrap.className = 'actions' + (btns.length===3?' three':'');
+    btns.forEach(b=>{
+      const el = document.createElement('button');
+      el.className = 'chip-btn ' + b.c; el.textContent = b.l;
+      el.addEventListener('click', ()=>fhAct(b.k));
+      actWrap.appendChild(el);
+    });
+  }
+}
+
+document.getElementById('fhNext').addEventListener('click', fhAdvance);
+document.getElementById('fhNewHand').addEventListener('click', fhStart);
+
 /* ================= Init ================= */
 (function restore(){
   const s = Store.get('settings', null);
@@ -2163,6 +2851,8 @@ document.getElementById('btnPfRange').addEventListener('click', ()=>{
   if(Array.isArray(mh)){ myHands = mh; mhLogId = Math.max(1, ...myHands.map(h=>h.id||0)) + 1; }
   const hs = Store.get('history', null);
   if(Array.isArray(hs)){ quizHistory = hs; histIdCounter = Math.max(1, ...quizHistory.map(h=>h.id||0)) + 1; }
+  const fs2 = Store.get('fhSession', null);
+  if(fs2 && typeof fs2.hands === 'number') fhSession = fs2;
   const sc = Store.get('score', null);
   if(sc){ score=sc.score||0; total=sc.total||0; streak=sc.streak||0;
     document.getElementById('statScore').textContent = `${score}/${total}`;
